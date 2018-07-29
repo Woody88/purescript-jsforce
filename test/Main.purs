@@ -2,8 +2,15 @@ module Test.Main where
 
 import Prelude
 import Effect (Effect)
-import Effect.Console (log)
+import Test.Spec (describe, it)
+import Test.Spec.Assertions (shouldEqual)
+import Test.Spec.Reporter.Console (consoleReporter)
+import Test.Spec.Runner (run)
 
 main :: Effect Unit
-main = do
-  log "You should add some tests."
+main = run [consoleReporter] do
+  describe "purescript-spec" do
+    describe "Attributes" do
+      it "awesome" do
+        let isAwesome = true
+        isAwesome `shouldEqual` true
