@@ -1,0 +1,25 @@
+{
+  "name": "purescript-jsforce",
+  "version": "1.0.0",
+  "description": "Purescript wrapper for jsforce library",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Woody88/purescript-jsforce.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Woody88/purescript-jsforce/issues"
+  },
+  "homepage": "https://github.com/Woody88/purescript-jsforce#readme",
+  "devDependencies": {
+    "jsforce": "^1.9.0"
+  }
+}
