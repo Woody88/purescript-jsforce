@@ -1,5 +1,5 @@
 {
-  "name": "purescript-jsforce",
+  "name": "purescript-sforce",
   "ignore": [
     "**/.*",
     "node_modules",
@@ -11,7 +11,9 @@
     "purescript-console": "^4.1.0",
     "purescript-effect": "^2.0.0",
     "purescript-spec": "^3.0.0",
-    "purescript-ffi-utils": "^4.0.0"
+    "purescript-record": "^1.0.0",
+    "purescript-typelevel-prelude": "^3.0.0",
+    "purescript-generics-rep": "^6.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0"

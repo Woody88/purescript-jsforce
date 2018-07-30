@@ -1,5 +1,5 @@
 {
-  "name": "purescript-jsforce",
+  "name": "purescript-sforce",
   "version": "1.0.0",
   "description": "Purescript wrapper for jsforce library",
   "main": "index.js",
