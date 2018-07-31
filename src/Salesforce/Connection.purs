@@ -1,14 +1,14 @@
-module Connection where
+module Salesforce.Connection where
 
 import Prelude
-import Prim.Row
-import Data.Function.Uncurried
+import Prim.Row (class Union)
+import Data.Function.Uncurried (Fn1)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Types 
+import Salesforce.Types (Connection)
 
 
-type ConnectionProps = 
+type ConnectionConfig = 
         ( logLevel      :: String
         , version       :: String
         , maxRequest    :: Int
@@ -22,6 +22,7 @@ type ConnectionProps =
         , proxyUrl      :: String 
         )
 
+-- newtype SForce (p :: Platform) e a = SForce (Connection p -> Aff (Either e a))
 
 data ConnectionType = Browser | CLI 
 
@@ -30,9 +31,10 @@ derive instance genericConnectionType :: Generic ConnectionType _
 instance showConnectionType :: Show ConnectionType where
   show = genericShow
 
-connection 
-    :: forall props others. Union props others ConnectionProps 
-    => PSForce -> { | props } -> Connection
-connection psforce props = runFn2 _newConnection psforce props
+-- connection 
+--     :: forall props others. Union props others ConnectionProps 
+--     => { | props } -> Connection p 
+-- connection psforce props = runFn1 _newConnection props
 
-foreign import _newConnection :: forall props others. Union props others ConnectionProps => Fn2 PSForce { | props } Connection 
+
+foreign import _newConnection :: forall props others. Union props others ConnectionConfig => Fn1 { | props } Connection
