@@ -1,12 +1,21 @@
 module Salesforce.Connection where
 
 import Prelude
-import Prim.Row (class Union)
+
+import Data.Either (Either(..))
+import Data.Tuple
 import Data.Function.Uncurried (Fn1)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Salesforce.Types (Connection)
+import Data.Function.Uncurried (Fn6, runFn6)
+import Effect (Effect)
+import Effect.Aff (Aff)
+import Effect.Aff.Compat (EffectFnAff, fromEffectFnAff)
+import Prim.Row (class Union)
+import Salesforce.Types (Connection, Username(..), Password(..))
+import Salesforce.SObject.Types (UserInfo)
 
+data LoginError = LoginError String
 
 type ConnectionConfig = 
         ( logLevel      :: String
@@ -19,6 +28,8 @@ type ConnectionConfig =
         , sessionId     :: String 
         , refreshToken  :: String
         , signedRequest :: String
+        , clientId      :: String
+        , redirectUri   :: String
         , proxyUrl      :: String 
         )
 
@@ -31,10 +42,14 @@ derive instance genericConnectionType :: Generic ConnectionType _
 instance showConnectionType :: Show ConnectionType where
   show = genericShow
 
--- connection 
---     :: forall props others. Union props others ConnectionProps 
---     => { | props } -> Connection p 
--- connection psforce props = runFn1 _newConnection props
+mkConnection 
+    :: forall configs others. Union configs others ConnectionConfig 
+    => { | configs } -> Effect Connection 
+mkConnection configs = mkConnection_ configs
 
+login :: Connection -> Username -> Password -> Aff (Either LoginError (Tuple Connection UserInfo))
+login conn (Username u) (Password p s) = fromEffectFnAff $ runFn6 login_ conn u (p <> s) (Left <<< LoginError) Tuple Right
 
-foreign import _newConnection :: forall props others. Union props others ConnectionConfig => Fn1 { | props } Connection
+foreign import login_ :: forall a b. Fn6 Connection String String (String -> a) (Connection -> UserInfo -> b) (b -> a) (EffectFnAff a)
+
+foreign import mkConnection_ :: forall configs others. Union configs others ConnectionConfig => { | configs } -> Effect Connection

@@ -1,6 +1,6 @@
 module Salesforce.Client where
 
-import Prelude (($), (<<<))
+import Prelude (($), (<<<), Unit)
 import Prim.Row (class Union)
 import Data.Either (Either(..))
 import Data.Function.Uncurried (Fn5, runFn5)
@@ -27,4 +27,4 @@ login opts client = fromEffectFnAff $ runFn5 login_ client opts (Left Cancelled)
 
 foreign import mkClient :: forall configs o. Union configs o ConnectionConfig => { | configs } -> Effect Client 
 foreign import login_ :: forall configs o a. Union configs o LoginOptions =>  Fn5 Client { | configs } a (String -> a) (Connection -> a) (EffectFnAff a)
-       
+foreign import getAccounts :: Connection -> Effect Unit
