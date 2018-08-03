@@ -7,7 +7,6 @@ import Prelude
 import Salesforce.Client
 import Salesforce.SOQL.Query
 import Salesforce.Types
-
 import Control.Monad.Reader.Trans (ReaderT(..), runReaderT, ask)
 import Data.Either (either, Either)
 import Data.Generic.Rep (class Generic)
@@ -21,8 +20,8 @@ import Foreign.Generic (genericDecode, genericEncode, decodeJSON, genericEncodeJ
 import Salesforce.Connection as Conn
 
 newtype Account = Account 
-  { name :: String 
-  , id   :: String 
+  { "Name" :: String 
+  , "Id"   :: String 
   }
 
 derive instance genericAccount :: Generic Account _
@@ -37,6 +36,7 @@ instance encodeAccount :: Encode Account where
 instance showAccount :: Show Account where 
   show = genericShow 
 
+
 main :: Effect Unit
 main = mainNode
 
@@ -44,7 +44,7 @@ mainNode :: Effect Unit
 mainNode = do 
   c <- Conn.mkConnection loginOpts2
   launchAff_ do
-    eitherLogin <- Conn.login c (Username "...") (Password "..." "...")
+    eitherLogin <- Conn.login c (Username "") (Password "" "")
     liftEffect $ either handleLoginError handleLoginSuccess eitherLogin
     liftEffect $ log "end app"
   
@@ -59,9 +59,11 @@ mainNode = do
       launchAff_ $ do
         liftEffect $ log "hello"
         eitherAccs <- queryAccounts conn
-        liftEffect $ either (\x -> log "error") (\x -> log "hello world") eitherAccs
+        liftEffect $ either handler (log <<< encodeJSON) eitherAccs
         liftEffect $ log $ "aff2"
 
+    handler (QueryError x) = log x
+    handler (SOQLParseError x) = logShow x
 
 mainBrowser :: Effect Unit
 mainBrowser = do

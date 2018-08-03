@@ -15,10 +15,11 @@ exports.queryString_ = function(conn, q, error, success){
         //     return onSuccess( sucesss( objs ) );
             
         // });
-        setTimeout(function(){ onSuccess( sucesss( objs ) ); }, 2000);
-        return onSuccess( sucesss( objs ) );
+        // setTimeout(function(){ onSuccess( sucesss( objs ) ); }, 2000);
+        // return onSuccess( sucesss( objs ) );
 
         return function(cancelError, onCancelerError, onCancelerSuccess) {
+            setTimeout(function(){ onSuccess( success( objs ) ); }, 2000);
             onCancelerSuccess();
         };
     }
@@ -26,16 +27,9 @@ exports.queryString_ = function(conn, q, error, success){
 
 exports.runSOQL_ = function(conn, q, error, success){
     return function(onError, onSuccess){
-        conn.query(q, function(err, res){
-            if (err){
-                //console.log('FFI queryString Error: ', err);
-                return onError( error( err.message ) );
-            }
-            
-            console.log('FFI queryString Result: ', JSON.stringify(res));
-            return onSuccess( sucesss( res ) );
-            
-        });
+        conn.query(q)
+         .then( function(res) { return onSuccess(success(res)); }, 
+                function(err) { return onSuccess(error(err.message)); } );
 
         return function(cancelError, onCancelerError, onCancelerSuccess) {
             onCancelerSuccess();
