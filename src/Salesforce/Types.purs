@@ -60,5 +60,16 @@ runSalesforce :: forall a. SalesforceM a -> Connection -> Aff a
 runSalesforce (SalesforceM f) conn =
   f conn
 
+salesforce :: forall e a. (Connection -> Aff (Either e a)) -> Salesforce e a
+salesforce = ExceptT <<< SalesforceM
+
+-- salesforceT :: forall e a. (Connection -> ExceptT e Aff a) -> Salesforce e a
+-- salesforceT = ExceptT <<< SalesforceM <<< runExceptT
+
+runSalesforceT :: forall e a. Salesforce e a -> Connection -> Aff (Either e a)
+runSalesforceT s conn = do
+  let (SalesforceM f) = runExceptT s
+  f conn
+
 -- undefined :: forall a. a 
 -- undefined = unsafeCoerce unit

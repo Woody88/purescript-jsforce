@@ -16,7 +16,10 @@
     "purescript-generics-rep": "^6.0.0",
     "purescript-spec-quickcheck": "^3.0.0",
     "purescript-quickcheck-laws": "^4.0.0",
-    "purescript-unsafe-coerce": "^4.0.0"
+    "purescript-unsafe-coerce": "^4.0.0",
+    "purescript-foreign-generic": "^7.0.0",
+    "purescript-foreign": "^5.0.0",
+    "purescript-transformers": "^4.1.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0"
