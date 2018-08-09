@@ -21,3 +21,11 @@ exports.login_ = function(conn, user, pass, loginErr, tuple, success){
         };
     }
 }
+
+exports.logout_ = function(conn){
+    return function(){
+        conn.logout();
+        return {};
+    }
+  }
+  

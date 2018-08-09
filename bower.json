@@ -19,7 +19,9 @@
     "purescript-unsafe-coerce": "^4.0.0",
     "purescript-foreign-generic": "^7.0.0",
     "purescript-foreign": "^5.0.0",
-    "purescript-transformers": "^4.1.0"
+    "purescript-transformers": "^4.1.0",
+    "purescript-simple-json": "^4.1.0",
+    "purescript-node-process": "^6.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0"
