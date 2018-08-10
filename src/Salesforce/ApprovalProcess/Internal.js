@@ -15,7 +15,7 @@ exports.submitImpl = function(){
                 apReqRes.errors = apReqRes.errors.map(function(e) { return e.message; });
                 return onSuccess( success( apReqRes ) ); 
             }
-            console.log('Ap: ', ap);
+            
             ap.submit(contextId, comments, options).then(submissionSuccess, submissionError);
             return function(cancelError, onCancelerError, onCancelerSuccess) {
                 onCancelerSuccess();

@@ -20,6 +20,7 @@ import Effect.Console (log, logShow)
 import Foreign.Class (class Decode, class Encode, decode, encode)
 import Foreign.Generic (genericDecode, genericEncode, decodeJSON, genericEncodeJSON, encodeJSON, defaultOptions)
 import Node.Process (lookupEnv)
+import Salesforce.Apex as Apex
 import Salesforce.ApprovalProcess as SFAP
 import Salesforce.Connection (RequestError)
 import Salesforce.Connection as Conn
@@ -44,6 +45,9 @@ instance encodeAccount :: Encode Account where
 
 instance jsomAccount :: JSON.ReadForeign Account where 
   readImpl = genericDecode $ defaultOptions {unwrapSingleConstructors = true}
+
+instance writeJsonAccount :: JSON.WriteForeign Account where 
+  writeImpl = genericEncode $ defaultOptions {unwrapSingleConstructors = true}
 
 instance showAccount :: Show Account where 
   show = genericShow 
@@ -78,9 +82,13 @@ runSalesforceApp (Tuple conn userInfo) = do
     liftEffect $ log "running Salesforce..."
     eitherSubmit <- try $ SFAP.submit (SFAP.ContextId "aB8N00000004Ca6") (SFAP.Comments mempty) {}
     liftEffect $ log $ either show JSON.writeJSON eitherSubmit
+
+    eitherGetAccount  <- try $ getApexAccount "/v1/accounts/001N000001KLDcN" {}
+    liftEffect $ log $ either show JSON.writeJSON eitherGetAccount
+
     eitherCreateAccount <- createAccount $ Account $ {"RecordTypeId":"01210000000RMRAAA4","Name":"出船鮨 Test2","Id":"","C_ShinkiKizon__c":"新規"}
     eitherAccount <- try $ queryAccounts --(getAccount $ sfdcId "00110000011280xAAA" <<< sobjectName $ "Account") 
-    --liftEffect $ either handler (log <<< encodeJSON) eitherAccount
+    liftEffect $ either handler (log <<< encodeJSON) eitherAccount
     liftEffect $ either handler (\accs -> launchAff_ $ flip runSalesforceT conn do deleteAccounts accs) eitherAccount
     -- eitherAccount <- try $ (getAccount $ sfdcId "00110000011280xAAA" <<< sobjectName $ "Account") 
     -- liftEffect $ log $ either (const "failed retrieve") encodeJSON eitherAccount
@@ -123,6 +131,9 @@ handleCreateSuccess conn acc@(Account rec) = do
 --       launchAff_ $ do
 --         v <- queryAccounts conn 
 --         liftEffect $ logShow v
+
+getApexAccount :: forall opts. String -> opts -> Salesforce Conn.RequestError Account 
+getApexAccount = Apex.get  
 
 getAccount :: SFId -> Salesforce Conn.RequestError Account 
 getAccount = Conn.retrieve
