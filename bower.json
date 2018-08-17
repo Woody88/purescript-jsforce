@@ -21,7 +21,12 @@
     "purescript-foreign": "^5.0.0",
     "purescript-transformers": "^4.1.0",
     "purescript-simple-json": "^4.1.0",
-    "purescript-node-process": "^6.0.0"
+    "purescript-node-process": "^6.0.0",
+    "purescript-affjax": "^7.0.0",
+    "purescript-form-urlencoded": "^4.0.1",
+    "purescript-uri": "^6.0.0",
+    "purescript-parsing": "^5.0.1",
+    "purescript-strings": "^4.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0"

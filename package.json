@@ -7,6 +7,7 @@
     "test": "test"
   },
   "scripts": {
+    "start": "parcel entry.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -20,6 +21,8 @@
   },
   "homepage": "https://github.com/Woody88/purescript-jsforce#readme",
   "devDependencies": {
-    "jsforce": "^1.9.0"
+    "jsforce": "^1.9.0",
+    "parcel-bundler": "^1.9.7",
+    "xhr2": "^0.1.4"
   }
 }
