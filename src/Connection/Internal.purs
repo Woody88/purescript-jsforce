@@ -1,8 +1,6 @@
 module Connection.Internal where
 
 import Prelude
-import Prim.Row
-
 import Affjax as AX
 import Affjax.RequestBody (formURLEncoded, string)
 import Affjax.RequestHeader (RequestHeader(..))
