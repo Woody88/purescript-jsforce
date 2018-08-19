@@ -31,7 +31,7 @@ type CommonConfig r
       ) 
 
 newtype Connection 
-    = Connection { access_token   :: String
+    = Connection { access_token  :: String
                  , token_type    :: Maybe String
                  , refresh_token :: Maybe String 
                  , scope         :: Maybe String

@@ -5,11 +5,28 @@ import Prelude
 import Salesforce.Connection.Types (Connection)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
+import Data.Generic.Rep (class Generic)
+import Data.Maybe (Maybe)
 import Data.Either (Either(..))
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Foreign (MultipleErrors)
+import Foreign.Class (class Decode)
+import Foreign.Generic (defaultOptions, genericDecode)
+
+type SalesforceErrorResponses = Array SalesforceErrorResponse
+
+newtype SalesforceErrorResponse 
+  = SFErrorResponse { fields    :: Maybe (Array String) 
+                    , message   :: String
+                    , errorCode :: String 
+                    }
+
+derive instance genericSalesforceErrorResponse :: Generic SalesforceErrorResponse _ 
+
+instance decodeSalesforceErrorResponse :: Decode SalesforceErrorResponse where 
+  decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
 
 newtype SalesforceM a = SalesforceM (Connection -> Aff a)
 
