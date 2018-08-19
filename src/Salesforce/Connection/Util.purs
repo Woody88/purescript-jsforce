@@ -1,6 +1,6 @@
 module Salesforce.Connection.Util where
 
-import Connection.Types 
+import Salesforce.Connection.Types 
 import Control.Bind (join)
 import Control.Monad.Error.Class (throwError)
 import Data.Array (last)

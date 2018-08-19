@@ -7,7 +7,7 @@ import Affjax as AX
 import Affjax.RequestBody (formURLEncoded, string)
 import Affjax.RequestHeader (RequestHeader(..))
 import Affjax.ResponseFormat as ResponseFormat
-import Connection (Connection(..))
+import Salesforce.Connection (Connection(..))
 import Control.Monad.Except (runExcept)
 import Data.Argonaut.Core (Json, stringify)
 import Data.Bifunctor (lmap)

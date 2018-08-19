@@ -1,6 +1,6 @@
 module Main where
 
-import Connection
+import Salesforce.Connection
 import Salesforce.Types
 import Prelude
 import Query.Internal

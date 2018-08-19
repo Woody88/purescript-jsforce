@@ -6,8 +6,8 @@ import Affjax as AX
 import Affjax.RequestBody (formURLEncoded, string)
 import Affjax.RequestHeader (RequestHeader(..))
 import Affjax.ResponseFormat as ResponseFormat
-import Connection.Types (ClientId, ClientSecret, CommonConfig, Connection(..), ConnectionConfig(..), EnvironmentType(..), GrantType(..), Password(..), RequestError(..), SecretToken(..), SessionId(..), Username(..), toFormUrlParam)
-import Connection.Util (maybeToEither, getXmlElVal)
+import Salesforce.Connection.Types (ClientId, ClientSecret, CommonConfig, Connection(..), ConnectionConfig(..), EnvironmentType(..), GrantType(..), Password(..), RequestError(..), SecretToken(..), SessionId(..), Username(..), toFormUrlParam)
+import Salesforce.Connection.Util (maybeToEither, getXmlElVal)
 import Control.Monad.Except (runExcept)
 import Data.Argonaut.Core as J
 import Data.Array (foldl, foldr, take)

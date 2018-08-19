@@ -2,7 +2,7 @@ module Salesforce.Types where
 
 import Prelude
 
-import Connection.Types (Connection)
+import Salesforce.Connection.Types (Connection)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Data.Either (Either(..))
