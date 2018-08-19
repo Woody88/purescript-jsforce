@@ -1,6 +1,7 @@
-module Connection.Internal where
+module Salesforce.Connection.Internal where
 
 import Prelude
+
 import Affjax as AX
 import Affjax.RequestBody (formURLEncoded, string)
 import Affjax.RequestHeader (RequestHeader(..))
@@ -9,12 +10,14 @@ import Connection.Types (ClientId, ClientSecret, CommonConfig, Connection(..), C
 import Connection.Util (maybeToEither, getXmlElVal)
 import Control.Monad.Except (runExcept)
 import Data.Argonaut.Core as J
-import Data.Array (foldl, foldr)
+import Data.Array (foldl, foldr, take)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.FormURLEncoded (fromArray)
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.String (Pattern(..))
+import Data.String.Common (joinWith, split)
 import Data.String.Regex (match)
 import Data.String.Regex.Flags (noFlags)
 import Data.String.Regex.Unsafe (unsafeRegex)
@@ -67,27 +70,30 @@ fromUserPasswordSoap' user pswd env version = do
                                           }) 
     pure $ do 
         xmlDoc <- res.body # handleSoapResponseError 
-        handleSoapResponse xmlDoc
-    where url' = foldr (\b a -> b <> "/" <> a) mempty [envUrl env, soapBaseUrl, show version]
-          body = string $ soapUserPassBody user pswd
+        handleSoapResponse envurl xmlDoc
+    where 
+        envurl = envUrl env
+        url' = foldr (\b a -> b <> "/" <> a) mempty [envurl, soapBaseUrl, show version]
+        body = string $ soapUserPassBody user pswd
 
-handleSoapResponse :: String -> Either RequestError Connection  
-handleSoapResponse xml = do
+handleSoapResponse :: String -> String -> Either RequestError Connection  
+handleSoapResponse envUrl xml = do
         userId    <- (getXmlElVal $ match userIdReg xml )   `maybeToEither` parseXmlError "userId"
         orgId     <- (getXmlElVal $ match orgIdReg xml )    `maybeToEither` parseXmlError "orgId"
         serverUrl <- (getXmlElVal $ match serverUrlReg xml) `maybeToEither` parseXmlError "serverUrl"
         sessionId <- (getXmlElVal $ match sessionIdReg xml) `maybeToEither` parseXmlError "sessionId"
-        pure $ Connection { access_token: sessionId
-                          , token_type: Just "Bearer"
-                          , instance_url: serverUrl  --- need to fix this passing url with version number and what not
-                          , id: serverUrl <> "/id/" <> userId <> "/" <>orgId
-                          , refresh_token: Nothing 
-                          , scope: Nothing 
-                          , state: Nothing 
-                          , issued_at: mempty
-                          , signature: mempty 
-                          }
+        pure $  Connection { access_token: sessionId
+                           , token_type: Just "Bearer"
+                           , instance_url: getHost serverUrl  --- need to fix this passing url with version number and what not
+                           , id: serverUrl <> "/id/" <> userId <> "/" <>orgId
+                           , refresh_token: Nothing 
+                           , scope: Nothing 
+                           , state: Nothing 
+                           , issued_at: mempty
+                           , signature: mempty 
+                           }
     where 
+        getHost url  = joinWith "/" $ take 3 $ split (Pattern "/")  url
         serverUrlReg = unsafeRegex "<serverUrl>([^<]+)</serverUrl>" noFlags 
         sessionIdReg = unsafeRegex "<sessionId>([^<]+)</sessionId>" noFlags 
         userIdReg    = unsafeRegex "<userId>([^<]+)</userId>" noFlags 
@@ -101,7 +107,7 @@ handleSoapResponseError = lmap (\err -> do
         faultstringReg = unsafeRegex "<faultstring>([^<]+)</faultstring>" noFlags 
 
 fromSession :: { sessionId :: SessionId, serverUrl :: String | CommonConfig () } -> Aff (Either RequestError Connection) 
-fromSession {sessionId: (SessionId sessionId), serverUrl} = pure $ pure $
+fromSession {sessionId: (SessionId sessionId), serverUrl, envType} = pure $ pure $
     Connection { access_token:  sessionId
                , token_type:    Nothing
                , refresh_token: Nothing 
@@ -112,6 +118,7 @@ fromSession {sessionId: (SessionId sessionId), serverUrl} = pure $ pure $
                , issued_at:     mempty 
                , signature:     mempty
                }
+
 
 fromUserPasswordOauth :: { clientId :: ClientId, clientSecret :: ClientSecret | CommonConfig () } -> Aff (Either RequestError Connection)  
 fromUserPasswordOauth {clientId, clientSecret, username, password, envType } = 
@@ -125,7 +132,8 @@ fromUserPasswordOauth' user pswd cs cid env = do
         (runExcept $ runDecoder $ J.stringify json) # handleDecodeError
     where 
         grantType = GPassword 
-        url  = envUrl env <> tokenBaseUrl
+        envurl = envUrl env
+        url  = envurl <> tokenBaseUrl
         body = formURLEncoded <<< fromArray $ [toFormUrlParam user, toFormUrlParam pswd, toFormUrlParam cid, toFormUrlParam cs, toFormUrlParam grantType]
 
 runDecoder = decodeJSONWith decode
@@ -137,4 +145,3 @@ handleDecodeError = lmap (\err -> DecodeError $ show err)
 envUrl :: EnvironmentType -> String 
 envUrl Production = productionUrl
 envUrl Sandbox    = sandboxUrl
-

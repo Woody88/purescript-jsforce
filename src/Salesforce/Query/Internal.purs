@@ -15,35 +15,35 @@ import Data.Either (Either(..), either)
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String.Pattern (Pattern(..), Replacement(..))
+import Effect.Class (liftEffect)
+import Effect.Console (log)
 import Foreign.Class (class Decode, decode)
 import Foreign.JSON (decodeJSONWith)
-import Monad.Internal (Salesforce, salesforce, runSalesforceT)
-import Prelude ((<<<), (<>), show, ($), (#), flip, bind, pure, identity)
+import Salesforce.Types (Salesforce, salesforce, runSalesforceT)
+import Prelude ((<<<), (<>), show, ($), (#), flip, bind, pure, identity, discard)
 import Unsafe.Coerce (unsafeCoerce)
-
 
 queryUrl :: Maybe Number -> String 
 queryUrl Nothing  = "services/data/v42.0/query/"
 queryUrl (Just v) = "services/data/v" <> show v <> "/query/"    
 
 query :: forall result. Decode result => SOQL result -> Salesforce QueryError result
-query soql = salesforce \conn -> do
-    eitherJson <- runSalesforceT (queryRequest $ Query soql "?q=") conn 
-    pure do 
-        json <- eitherJson
-        (runExcept $ runDecoder $ stringify json) # handleDecodeError
+query soql = do
+    json <- queryRequest $ Query soql "?q=" 
+    liftEffect $ log $ stringify json
+    salesforce \_ ->  pure $ (runExcept $ runDecoder $ stringify json) # handleDecodeError
 
 queryRequest :: forall r. QueryEndpoint r -> Salesforce QueryError Json 
 queryRequest (Query (SOQL soql) sep) = salesforce \(Connection conn) -> do
-    res  <- AX.request (AX.defaultRequest { url = url'
+    res  <- AX.request (AX.defaultRequest { url = url' conn.instance_url
                                           , method = Left GET
                                           , responseFormat = ResponseFormat.json
-                                          , headers = [RequestHeader "Authorization" (authHeader $ fromMaybe "" conn.token_type) ]
+                                          , headers = [RequestHeader "Authorization" (authHeader conn.access_token $ fromMaybe "" conn.token_type) ]
                                           })  
     pure $ res.body # handleResponseError
     where 
-        url' = (queryUrl Nothing) <> sep <> replaceQuerySpace soql
-        authHeader = flip (<>) " token"
+        url' bUrl =  bUrl <> "/" <> (queryUrl Nothing) <> sep <> replaceQuerySpace soql
+        authHeader token type_ = type_ <> " " <> token
         replaceQuerySpace = \query -> replaceAll (Pattern " ") (Replacement "+") query
 queryRequest _ = unsafeCoerce "?"
 

@@ -1,8 +1,8 @@
-module Monad.Internal where
+module Salesforce.Types where
 
 import Prelude
 
-import Connection (Connection)
+import Connection.Types (Connection)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Data.Either (Either(..))
@@ -12,13 +12,14 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Foreign (MultipleErrors)
 
 newtype SalesforceM a = SalesforceM (Connection -> Aff a)
+
 type Salesforce e a = ExceptT e SalesforceM a
 
 instance functorSalesforceM :: Functor SalesforceM where
-  map f s = SalesforceM \c -> runSalesforce s c >>= f >>> pure 
+  map f (SalesforceM s) = SalesforceM \c -> f <$> s c  
 
 instance applySalesforceM:: Apply SalesforceM where
-  apply (SalesforceM f) s = SalesforceM \c -> f c <*> runSalesforce s c 
+  apply (SalesforceM f) (SalesforceM s) = SalesforceM \c -> f c <*> s c 
 
 instance applicativeSalesforceM :: Applicative SalesforceM where 
   pure x = SalesforceM \c -> pure x

@@ -1,8 +1,8 @@
-module Connection.Types where
+module Salesforce.Connection.Types where
 
 import Data.FormURLEncoded
 import Prelude
-
+import Type.Proxy
 import Affjax.ResponseFormat (ResponseFormatError)
 import Control.Monad.Except (runExcept)
 import Data.Generic.Rep (class Generic)
@@ -13,6 +13,7 @@ import Data.Tuple (Tuple(..))
 import Data.Tuple.Nested ((/\))
 import Foreign.Class (class Encode, class Decode, encode, decode)
 import Foreign.Generic (defaultOptions, genericDecode)
+import Unsafe.Coerce (unsafeCoerce)
 
 newtype Username    = Username String 
 newtype SecretToken = SecretToken String 
