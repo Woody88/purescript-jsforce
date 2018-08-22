@@ -6,6 +6,7 @@ import Salesforce.Connection
 import Salesforce.Query.Internal
 import Salesforce.Query.Types
 import Salesforce.Types
+
 import Control.Monad.Error.Class (try)
 import Data.Either (Either, either)
 import Data.Generic.Rep (class Generic)
@@ -18,7 +19,7 @@ import Effect.Console (log, logShow)
 import Foreign.Class (class Decode, class Encode)
 import Foreign.Generic (genericDecode, genericEncode, defaultOptions)
 import Node.Process (lookupEnv)
-import Salesforce.SObject (SObjectError, InsertResult, SObjectId(..), sobjectName)
+import Salesforce.SObject (InsertResult, SObjectError, SObjectId(..), sobjectId, sobjectName)
 import Salesforce.SObject as SObject
 
 newtype Account = Account { "Name" :: String, "RecordTypeId" :: String,  "C_ShinkiKizon__c" :: String}
@@ -60,7 +61,7 @@ main = do
 app :: Connection -> Effect Unit
 app conn = launchAff_ do
   s <- flip runSalesforceT conn do
-    eitherAcc <- try newAccount 
+    eitherAcc <- try deleteAccount 
     pure $ either show show eitherAcc
   liftEffect $ logShow s
    
@@ -71,4 +72,8 @@ queryAccount = query (SOQL "Select Id, Name From Account Limit 10")
 newAccount :: Salesforce SObjectError SObjectId
 newAccount = SObject.insert (sobjectName "Account") $ Account { "Name": "Test Account 3", "RecordTypeId": "01210000000RMRAAA4", "C_ShinkiKizon__c": "新規" }
 
+updateAccount :: Salesforce SObjectError Unit
+updateAccount = SObject.update (sobjectName "Account") (sobjectId "001N000001KMSep") $ Account { "Name": "Test Account 3 updated", "RecordTypeId": "01210000000RMRAAA4", "C_ShinkiKizon__c": "新規" }
 
+deleteAccount :: Salesforce SObjectError Unit 
+deleteAccount = SObject.delete (sobjectName "Account") (sobjectId "001N000001KMSep") 
