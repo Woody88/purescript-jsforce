@@ -1,8 +1,8 @@
-module Query.Internal where
+module Salesforce.Query.Internal where
 
 import Affjax.Internal
 import Data.String.Common
-import Query.Types
+import Salesforce.Query.Types
 
 import Affjax as AX
 import Affjax.RequestBody (formURLEncoded, string)

@@ -2,18 +2,35 @@ module Salesforce.Types where
 
 import Prelude
 
-import Salesforce.Connection.Types (Connection)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
-import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe)
 import Data.Either (Either(..))
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
+import Data.Maybe (Maybe)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Foreign (MultipleErrors)
 import Foreign.Class (class Decode)
 import Foreign.Generic (defaultOptions, genericDecode)
+import Salesforce.Connection.Types (Connection)
+import Salesforce.Query.Types (QueryError)
+import Salesforce.SObject.Types (SObjectError)
+
+data SalesforceError 
+  = SObjectErr SObjectError 
+  | QueryErr QueryError
+
+derive instance genericSalesforceError :: Generic SalesforceError _ 
+
+instance showSalesforceError :: Show SalesforceError where 
+  show = genericShow 
+
+data SFEndpoint 
+  = SObject
+  | ApprovalProcess
+  | Query
 
 type SalesforceErrorResponses = Array SalesforceErrorResponse
 

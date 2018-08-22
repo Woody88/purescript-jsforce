@@ -5,13 +5,15 @@ import Prelude
 import Affjax (Response, ResponseFormatError, printResponseFormatError)
 import Affjax.StatusCode (StatusCode(..))
 import Control.Monad.Except (runExcept)
-import Data.Foldable (foldl)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
+import Data.Maybe (fromMaybe)
+import Data.Foldable (foldl)
 import Foreign (MultipleErrors)
 import Foreign.Class (class Decode, decode)
 import Foreign.JSON (decodeJSONWith)
-import Query.Types (QueryError(..))
+import Salesforce.Query.Types (QueryError(..))
+import Salesforce.SObject.Types (SObjectError(..))
 import Salesforce.Types (SalesforceErrorResponse(..), SalesforceErrorResponses)
 
 type AffjaxSFError = { status   :: StatusCode 
@@ -69,7 +71,15 @@ runDecoderImpl :: forall e b. Decode b => (MultipleErrors -> e) -> String -> Eit
 runDecoderImpl f j = lmap f (runExcept $ decodeJSONWith decode j)
 
 instance mapstatusCodeQueryError :: MapStatusCode QueryError where 
-    mapStatusCode {status, sfErrRes: sferrs } = QueryError $ concatErr sferrs
-        where 
-            concatErr errs = foldl (\b (SFErrorResponse sferr) -> b <> sferr.errorCode <> ": " <> sferr.message <> "\n" ) mempty errs
+    mapStatusCode = sfErrorHoist QueryError <<< _.sfErrRes
     mapParserError = QueryParseError <<< show
+
+instance mapstatusCodeSObject :: MapStatusCode SObjectError where 
+    mapStatusCode = sfErrorHoist SObjectError <<< _.sfErrRes
+    mapParserError = SObjectParseError <<< show
+
+sfErrorHoist :: forall e. (String -> e) -> SalesforceErrorResponses -> e
+sfErrorHoist f sferrs = f $ concatErr sferrs
+    where
+        concatErr errs = (foldl (\b (SFErrorResponse sferr) -> b <> sferr.errorCode <> ": " <> sferr.message <> (concatFields $ fromMaybe ["NoFields"] sferr.fields) <> "\n" ) mempty errs) 
+        concatFields fields = foldl append "Fields: " fields 

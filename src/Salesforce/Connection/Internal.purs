@@ -22,6 +22,8 @@ import Data.String.Regex (match)
 import Data.String.Regex.Flags (noFlags)
 import Data.String.Regex.Unsafe (unsafeRegex)
 import Effect.Aff (Aff)
+import Effect.Console (logShow)
+import Effect.Class (liftEffect)
 import Foreign.Class (decode)
 import Foreign.JSON (decodeJSONWith)
 

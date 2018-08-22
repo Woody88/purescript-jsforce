@@ -1,4 +1,4 @@
-module Query.Types where
+module Salesforce.Query.Types where
 
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
@@ -17,6 +17,7 @@ newtype QueryResult r
                   }
 
 data QueryEndpoint r = NextQuery String String | Query (SOQL r) String | QueryExplain (SOQL r) String | QueryReport String String
+
 data QueryError = QueryError String | QueryParseError String
 
 derive instance genericQueryResult :: Generic (QueryResult r) _
