@@ -1,14 +1,16 @@
 module Salesforce.Connection.Util where
 
-import Salesforce.Connection.Types 
+import Salesforce.Connection.Types
+
 import Control.Bind (join)
 import Control.Monad.Error.Class (throwError)
-import Data.Array (last)
+import Data.Array (last, tail)
 import Data.Array.NonEmpty (NonEmptyArray, toArray)
 import Data.Either (Either)
 import Data.Maybe (Maybe(..))
+import Data.Traversable (sequence, traverse)
 import Data.Traversable (traverse)
-import Prelude (pure, ($), mempty)
+import Prelude (pure, ($), (<<<), mempty, map)
 
 username :: String -> Username 
 username = Username 
@@ -28,19 +30,22 @@ clientId = ClientId
 getXmlElVal :: forall t. Maybe (NonEmptyArray (Maybe t)) → Maybe t
 getXmlElVal val = join $ join $ last $ (traverse toArray val) 
 
+getUserInfo :: forall t. Maybe (NonEmptyArray (Maybe t)) → Array (Maybe t)
+getUserInfo val = map join $ sequence $ join $ traverse (tail <<< toArray) $ val
+
 maybeToEither :: forall e a. Maybe a -> e -> Either e a 
 maybeToEither Nothing err = throwError err
 maybeToEither (Just x) _  = pure x
 
-unAuthConn :: Connection 
-unAuthConn = 
-    Connection { access_token: mempty
-               , token_type: pure mempty 
-               , refresh_token: pure mempty  
-               , scope: pure mempty 
-               , state: pure mempty  
-               , instance_url: mempty 
-               , id: mempty 
-               , issued_at: mempty  
-               , signature: mempty  
-               } 
+-- unAuthConn :: Connection 
+-- unAuthConn = 
+--     Connection { access_token: mempty
+--                , token_type: pure mempty 
+--                , refresh_token: pure mempty  
+--                , scope: pure mempty 
+--                , state: pure mempty  
+--                , instance_url: mempty 
+--                , id: mempty 
+--                , issued_at: mempty  
+--                , signature: mempty  
+--                } 

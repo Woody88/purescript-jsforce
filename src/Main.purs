@@ -61,7 +61,7 @@ main = do
 app :: Connection -> Effect Unit
 app conn = launchAff_ do
   s <- flip runSalesforceT conn do
-    eitherAcc <- try deleteAccount 
+    eitherAcc <- try queryAccount 
     pure $ either show show eitherAcc
   liftEffect $ logShow s
    

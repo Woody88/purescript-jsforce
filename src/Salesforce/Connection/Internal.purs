@@ -6,9 +6,7 @@ import Affjax as AX
 import Affjax.RequestBody (formURLEncoded, string)
 import Affjax.RequestHeader (RequestHeader(..))
 import Affjax.ResponseFormat as ResponseFormat
-import Salesforce.Connection.Types (ClientId, ClientSecret, CommonConfig, Connection(..), ConnectionConfig(..), EnvironmentType(..), GrantType(..), Password(..), RequestError(..), SecretToken(..), SessionId(..), Username(..), toFormUrlParam)
-import Salesforce.Connection.Util (maybeToEither, getXmlElVal)
-import Control.Monad.Except (runExcept)
+import Control.Monad.Except (runExcept, throwError)
 import Data.Argonaut.Core as J
 import Data.Array (foldl, foldr, take)
 import Data.Bifunctor (lmap)
@@ -22,10 +20,13 @@ import Data.String.Regex (match)
 import Data.String.Regex.Flags (noFlags)
 import Data.String.Regex.Unsafe (unsafeRegex)
 import Effect.Aff (Aff)
-import Effect.Console (logShow)
 import Effect.Class (liftEffect)
+import Effect.Console (logShow)
 import Foreign.Class (decode)
 import Foreign.JSON (decodeJSONWith)
+import Salesforce.Connection.Types (ClientId, ClientSecret, CommonConfig, Connection(..), ConnectionConfig(..), EnvironmentType(..), GrantType(..), Password(..), RequestError(..), SecretToken(..), SessionId(..), Username(..), ConnectionAuth(..), toFormUrlParam)
+import Salesforce.Connection.Util (maybeToEither, getXmlElVal, getUserInfo)
+import Salesforce.Types.Common (UserInfo(..))
 
 productionUrl :: String 
 productionUrl = "https://login.salesforce.com"
@@ -87,12 +88,13 @@ handleSoapResponse envUrl xml = do
         pure $  Connection { access_token: sessionId
                            , token_type: Just "Bearer"
                            , instance_url: getHost serverUrl  --- need to fix this passing url with version number and what not
-                           , id: serverUrl <> "/id/" <> userId <> "/" <>orgId
+                           , id: serverUrl <> "/id/" <> userId 
                            , refresh_token: Nothing 
                            , scope: Nothing 
                            , state: Nothing 
                            , issued_at: mempty
                            , signature: mempty 
+                           , userInfo: UserInfo { userId, orgId, url: serverUrl}
                            }
     where 
         getHost url  = joinWith "/" $ take 3 $ split (Pattern "/")  url
@@ -109,17 +111,20 @@ handleSoapResponseError = lmap (\err -> do
         faultstringReg = unsafeRegex "<faultstring>([^<]+)</faultstring>" noFlags 
 
 fromSession :: { sessionId :: SessionId, serverUrl :: String | CommonConfig () } -> Aff (Either RequestError Connection) 
-fromSession {sessionId: (SessionId sessionId), serverUrl, envType} = pure $ pure $
-    Connection { access_token:  sessionId
-               , token_type:    Nothing
-               , refresh_token: Nothing 
-               , scope:         Nothing
-               , state:         Nothing 
-               , instance_url:  serverUrl
-               , id:            mempty
-               , issued_at:     mempty 
-               , signature:     mempty
-               }
+fromSession {sessionId: (SessionId sessionId), serverUrl, envType} = pure do 
+    userInfo <- parseUserInfoFromIdUrl serverUrl 
+    pure do 
+        Connection { access_token:  sessionId
+                   , token_type:    Nothing
+                   , refresh_token: Nothing 
+                   , scope:         Nothing
+                   , state:         Nothing 
+                   , instance_url:  serverUrl
+                   , id:            mempty
+                   , issued_at:     mempty 
+                   , signature:     mempty
+                   , userInfo
+                   }
 
 
 fromUserPasswordOauth :: { clientId :: ClientId, clientSecret :: ClientSecret | CommonConfig () } -> Aff (Either RequestError Connection)  
@@ -130,8 +135,20 @@ fromUserPasswordOauth' :: Username -> Password -> ClientId -> ClientSecret -> En
 fromUserPasswordOauth' user pswd cs cid env = do
     res  <- AX.post ResponseFormat.json url body 
     pure $ do 
-        json <- res.body # handleResponseError url
-        (runExcept $ runDecoder $ J.stringify json) # handleDecodeError
+        json     <- res.body # handleResponseError url
+        (ConnectionAuth connAuth) <- ((runExcept $ runDecoder $ J.stringify json) # handleDecodeError) :: Either RequestError ConnectionAuth
+        userInfo <- parseUserInfoFromIdUrl connAuth.id 
+        pure $ Connection { userInfo
+                          , id: connAuth.id 
+                          , instance_url: connAuth.instance_url
+                          , access_token: connAuth.access_token
+                          , token_type: connAuth.token_type
+                          , refresh_token: connAuth.refresh_token
+                          , scope: connAuth.scope
+                          , state: connAuth.state
+                          , issued_at: connAuth.issued_at
+                          , signature: connAuth.signature
+                          }
     where 
         grantType = GPassword 
         envurl = envUrl env
@@ -147,3 +164,18 @@ handleDecodeError = lmap (\err -> DecodeError $ show err)
 envUrl :: EnvironmentType -> String 
 envUrl Production = productionUrl
 envUrl Sandbox    = sandboxUrl
+
+{-
+  This function function retrieves the organization Id and user Id from 
+  the Id url returned from an authenticated connection.
+-}
+parseUserInfoFromIdUrl :: String -> Either RequestError UserInfo 
+parseUserInfoFromIdUrl url = do 
+    v <- (pure $ getUserInfo $ match rg url) `maybeToEither` parseIdUrlError
+    case v of
+        [(Just userId), (Just orgId)] -> pure $ UserInfo  { userId, orgId, url}
+        _  -> throwError parseIdUrlError
+    where
+        rg = unsafeRegex "\\/(\\w+)\\/id\\/(\\w+)\\/" noFlags
+        parseIdUrlError = ResponseDecodeError $ "Id url regex failed."
+        

@@ -14,6 +14,7 @@ import Data.Tuple.Nested ((/\))
 import Foreign.Class (class Encode, class Decode, encode, decode)
 import Foreign.Generic (defaultOptions, genericDecode)
 import Unsafe.Coerce (unsafeCoerce)
+import Salesforce.Types.Common (UserInfo)
 
 newtype Username    = Username String 
 newtype SecretToken = SecretToken String 
@@ -30,16 +31,23 @@ type CommonConfig r
       | r
       ) 
 
-newtype Connection 
-    = Connection { access_token  :: String
-                 , token_type    :: Maybe String
-                 , refresh_token :: Maybe String 
-                 , scope         :: Maybe String
-                 , state         :: Maybe String 
-                 , instance_url  :: String
-                 , id            :: String
-                 , issued_at     :: String 
-                 , signature     :: String 
+type ConnectionAuth' 
+    = ( access_token  :: String
+      , token_type    :: Maybe String
+      , refresh_token :: Maybe String 
+      , scope         :: Maybe String
+      , state         :: Maybe String 
+      , instance_url  :: String
+      , id            :: String
+      , issued_at     :: String 
+      , signature     :: String 
+      )
+
+newtype ConnectionAuth = ConnectionAuth { | ConnectionAuth' }
+
+newtype Connection  
+    = Connection {userInfo :: UserInfo
+                 | ConnectionAuth' 
                  }
 
 data ConnectionConfig
@@ -58,6 +66,7 @@ data Password = Password String SecretToken
 data EnvironmentType = Production | Sandbox
 data GrantType = GPassword | GToken 
 
+derive instance genericConnectionAuth :: Generic ConnectionAuth _
 derive instance genericConnection :: Generic Connection _
 derive instance genericRequestError :: Generic RequestError _
 
@@ -66,6 +75,9 @@ instance showConnection :: Show Connection where
 
 instance showRequestError :: Show RequestError where
   show = genericShow
+
+instance decodeConnectionAuth :: Decode ConnectionAuth where 
+    decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
 
 instance decodeConnection :: Decode Connection where 
     decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
