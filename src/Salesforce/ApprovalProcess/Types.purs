@@ -10,8 +10,8 @@ import Prelude (class Show, ($))
 data ActionType = Submit | Approve | Reject 
 data ApprovalStatus = Approved | Rejected | Removed | Pending 
 
-newtype ApprovalRequest 
-    = ApprovalRequest { actionType                :: ActionType 
+newtype ApprovalProcess 
+    = ApprovalProcess { actionType                :: ActionType 
                       , contextActorId            :: String 
                       , contextId                 :: String 
                       , comments                  :: String 
@@ -19,6 +19,9 @@ newtype ApprovalRequest
                       , processDefinitionNameOrId :: String 
                       , skipEntryCriteria         :: Boolean 
                       } 
+
+newtype ApprovalRequest 
+    = ApprovalRequest { requests :: Array ApprovalProcess }
 
 newtype ApprovalResponse 
     = ApprovalResponse { actorIds       :: Array String 
@@ -32,6 +35,7 @@ newtype ApprovalResponse
 
 derive instance genericActionType :: Generic ActionType _
 derive instance genericApprovalStatus :: Generic ApprovalStatus _ 
+derive instance genericApprovalProcess :: Generic ApprovalProcess _
 derive instance genericApprovalRequest :: Generic ApprovalRequest _
 derive instance genericApprovalResponse :: Generic ApprovalResponse _ 
 
@@ -40,6 +44,9 @@ instance decodeActionType :: Decode ActionType where
 
 instance decodeApprovalStatus :: Decode ApprovalStatus where
   decode = genericDecodeEnum $ defaultGenericEnumOptions
+
+instance decodeApprovalProcess :: Decode ApprovalProcess where
+  decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
 
 instance decodeApprovalRequest :: Decode ApprovalRequest where
   decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
@@ -50,5 +57,5 @@ instance showActionType :: Show ActionType where
 instance showApprovalStatus :: Show ApprovalStatus where 
     show = genericShow
 
-instance showApprovalRequest :: Show ApprovalRequest where 
+instance showApprovalProcess :: Show ApprovalProcess where 
     show = genericShow
