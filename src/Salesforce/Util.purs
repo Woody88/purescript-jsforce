@@ -8,6 +8,7 @@ import Salesforce.SObject.Types (SObjectName(..))
 data Endpoint r
     = SObject (SObjectName)
     | Queries (QueryEndpoint r)
+    | Approvals
 
 class BaseUrl a where 
     baseUrl :: forall r. a -> Endpoint r -> String 
@@ -19,5 +20,5 @@ instance baseUrlConnection :: BaseUrl Connection where
         Queries (QueryExplain _ sep) -> conn.instance_url <> "/services/data/v42.0/query/?explain="
         Queries (QueryReport _ sep)  -> conn.instance_url <> "/services/data/v42.0/query/?explain="
         Queries (NextQuery _ sep)    -> conn.instance_url <> "/services/data/v42.0/query/"
-    
+        Approvals                    -> conn.instance_url <> "/services/data/v42.0/process/approvals/"        
 

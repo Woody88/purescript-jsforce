@@ -1,4 +1,4 @@
-module Affjax.Internal where
+module Salesforce.ServerStatus.Internal where
 
 import Prelude
 
@@ -7,11 +7,12 @@ import Affjax.StatusCode (StatusCode(..))
 import Control.Monad.Except (runExcept)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
-import Data.Maybe (fromMaybe)
 import Data.Foldable (foldl)
+import Data.Maybe (fromMaybe)
 import Foreign (MultipleErrors)
 import Foreign.Class (class Decode, decode)
 import Foreign.JSON (decodeJSONWith)
+import Salesforce.ApprovalProcess.Types (ApprovalProcessError(..))
 import Salesforce.Query.Types (QueryError(..))
 import Salesforce.SObject.Types (SObjectError(..))
 import Salesforce.Types (SalesforceErrorResponse(..), SalesforceErrorResponses)
@@ -77,6 +78,11 @@ instance mapstatusCodeQueryError :: MapStatusCode QueryError where
 instance mapstatusCodeSObject :: MapStatusCode SObjectError where 
     mapStatusCode = sfErrorHoist SObjectError <<< _.sfErrRes
     mapParserError = SObjectParseError <<< show
+
+instance mapstatusCodeApprovalProcess :: MapStatusCode ApprovalProcessError where 
+    mapStatusCode = sfErrorHoist ApprovalProcessError <<< _.sfErrRes
+    mapParserError = ApprovalProcessParseError <<< show
+
 
 sfErrorHoist :: forall e. (String -> e) -> SalesforceErrorResponses -> e
 sfErrorHoist f sferrs = f $ concatErr sferrs

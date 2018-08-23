@@ -2,10 +2,18 @@ module Salesforce.ApprovalProcess.Types where
 
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Foreign.Class (class Decode)
-import Foreign.Generic (defaultOptions, genericDecode)
-import Foreign.Generic.EnumEncoding (defaultGenericEnumOptions, genericDecodeEnum)
+import Data.Maybe (Maybe)
+import Foreign.Class (class Decode, class Encode)
+import Foreign.Generic (defaultOptions, genericDecode, genericEncode)
+import Foreign.Generic.EnumEncoding (defaultGenericEnumOptions, genericDecodeEnum, genericEncodeEnum)
 import Prelude (class Show, ($))
+
+data ApprovalProcessError 
+    = ApprovalProcessParseError String 
+    | ApprovalProcessError String 
+    | SubmitError String
+    | RejectError String
+    | ApprovalError String 
 
 data ActionType = Submit | Approve | Reject 
 data ApprovalStatus = Approved | Rejected | Removed | Pending 
@@ -14,8 +22,8 @@ newtype ApprovalProcess
     = ApprovalProcess { actionType                :: ActionType 
                       , contextActorId            :: String 
                       , contextId                 :: String 
-                      , comments                  :: String 
-                      , nextApproverIds           :: Array String 
+                      , comments                  :: Maybe String 
+                      , nextApproverIds           :: Maybe (Array String) 
                       , processDefinitionNameOrId :: String 
                       , skipEntryCriteria         :: Boolean 
                       } 
@@ -26,7 +34,7 @@ newtype ApprovalRequest
 newtype ApprovalResponse 
     = ApprovalResponse { actorIds       :: Array String 
                        , entityId       :: String 
-                       , errors         :: Array String 
+                       , errors         :: Maybe (Array String) 
                        , instanceId     :: String 
                        , instanceStatus :: ApprovalStatus 
                        , newWorkItemIds :: Array String 
@@ -51,6 +59,23 @@ instance decodeApprovalProcess :: Decode ApprovalProcess where
 instance decodeApprovalRequest :: Decode ApprovalRequest where
   decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
 
+instance decodeApprovalResponse :: Decode ApprovalResponse where
+  decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
+
+{-- Encode --}
+instance encodeActionType :: Encode ActionType where
+  encode = genericEncodeEnum $ defaultGenericEnumOptions
+
+instance encodeApprovalStatus :: Encode ApprovalStatus where
+  encode = genericEncodeEnum $ defaultGenericEnumOptions
+
+instance encodeApprovalProcess :: Encode ApprovalProcess where
+  encode = genericEncode $ defaultOptions { unwrapSingleConstructors = true }
+
+instance encodeApprovalRequest :: Encode ApprovalRequest where
+  encode = genericEncode $ defaultOptions { unwrapSingleConstructors = true }
+
+
 instance showActionType :: Show ActionType where 
     show = genericShow
 
@@ -59,3 +84,9 @@ instance showApprovalStatus :: Show ApprovalStatus where
 
 instance showApprovalProcess :: Show ApprovalProcess where 
     show = genericShow
+
+mapActionTypeToError :: ActionType -> (String -> ApprovalProcessError)
+mapActionTypeToError at = case at of 
+    Submit   ->  SubmitError
+    Approve  ->  ApprovalError
+    Reject   ->  RejectError

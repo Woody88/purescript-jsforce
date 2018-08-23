@@ -1,7 +1,7 @@
 module Salesforce.SObject.Internal where
 
 import Affjax as AX
-import Affjax.Internal (decodeWithEitherError)
+import Salesforce.ServerStatus.Internal (decodeWithEitherError)
 import Affjax.RequestBody (string)
 import Affjax.RequestHeader (RequestHeader(..))
 import Affjax.ResponseFormat as ResponseFormat
@@ -12,10 +12,9 @@ import Data.HTTP.Method (Method(..))
 import Data.Maybe (fromMaybe)
 import Data.MediaType.Common (applicationJSON)
 import Data.String (joinWith)
-import Effect.Aff (Aff)
 import Foreign.Class (class Encode)
 import Foreign.Generic (encodeJSON)
-import Prelude ((<$>), (<>), ($), bind, pure, mempty, unit, Unit)
+import Prelude ((<$>), (<>), ($), bind, pure, mempty, Unit)
 import Salesforce.Connection.Types (Connection(..))
 import Salesforce.SObject.Types (SObjectError(..), SObjectId(..), SObjectName, InsertResult(..), sobjectId)
 import Salesforce.Types (Salesforce, salesforce)

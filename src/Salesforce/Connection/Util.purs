@@ -1,7 +1,5 @@
 module Salesforce.Connection.Util where
 
-import Salesforce.Connection.Types
-
 import Control.Bind (join)
 import Control.Monad.Error.Class (throwError)
 import Data.Array (last, tail)
@@ -9,8 +7,8 @@ import Data.Array.NonEmpty (NonEmptyArray, toArray)
 import Data.Either (Either)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (sequence, traverse)
-import Data.Traversable (traverse)
-import Prelude (pure, ($), (<<<), mempty, map)
+import Prelude (pure, ($), (<<<), map)
+import Salesforce.Connection.Types
 
 username :: String -> Username 
 username = Username 
