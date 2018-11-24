@@ -14,7 +14,7 @@ import Data.Maybe (fromMaybe)
 import Data.MediaType.Common (applicationJSON)
 import Data.String (joinWith) 
 import Foreign.Generic (encodeJSON)
-import Salesforce.ApprovalProcess.Types (ApprovalProcessError, ApprovalProcess(..), ApprovalResponse(..), mapActionTypeToError)
+import Salesforce.ApprovalProcess.Types (ApprovalProcessError, ApprovalRequest(..), ApprovalProcess(..), ApprovalResponse(..), mapActionTypeToError)
 import Salesforce.Connection.Types (Connection(..))
 import Salesforce.Types (Salesforce, salesforce)
 import Salesforce.Util (Endpoint(..), baseUrl)
@@ -24,7 +24,7 @@ execute ap'@(ApprovalProcess ap) = salesforce \conn'@(Connection conn) -> do
     res <- AX.request $ AX.defaultRequest { url = baseUrl conn' Approvals
                                           , method = Left POST 
                                           , responseFormat = ResponseFormat.json
-                                          , content = pure $ string $ encodeJSON ap'
+                                          , content = pure $ string $ encodeJSON $ ApprovalRequest { requests: [ap'] }
                                           , headers = [ ContentType applicationJSON, RequestHeader "Authorization" (authHeader conn.access_token $ fromMaybe "" conn.token_type)]
                                           }
     let eitherApprovalResult = (decodeWithEitherError $ res { body = stringify <$> res.body }) :: (Either ApprovalProcessError ApprovalResponse)

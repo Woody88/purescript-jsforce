@@ -44,6 +44,7 @@ newtype ApprovalResponse
 derive instance genericActionType :: Generic ActionType _
 derive instance genericApprovalStatus :: Generic ApprovalStatus _ 
 derive instance genericApprovalProcess :: Generic ApprovalProcess _
+derive instance genericApprovalProcessError :: Generic ApprovalProcessError _
 derive instance genericApprovalRequest :: Generic ApprovalRequest _
 derive instance genericApprovalResponse :: Generic ApprovalResponse _ 
 
@@ -83,6 +84,12 @@ instance showApprovalStatus :: Show ApprovalStatus where
     show = genericShow
 
 instance showApprovalProcess :: Show ApprovalProcess where 
+    show = genericShow
+
+instance showApprovalResponse :: Show ApprovalResponse where 
+    show = genericShow
+
+instance showApprovalProcessError :: Show ApprovalProcessError where 
     show = genericShow
 
 mapActionTypeToError :: ActionType -> (String -> ApprovalProcessError)

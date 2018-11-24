@@ -19,10 +19,13 @@ import Effect.Console (log, logShow)
 import Foreign.Class (class Decode, class Encode)
 import Foreign.Generic (genericDecode, genericEncode, defaultOptions)
 import Node.Process (lookupEnv)
+import Salesforce.ApprovalProcess (ApprovalProcessError(..), ApprovalResponse, ActionType(..))
+import Salesforce.ApprovalProcess as Approvals
 import Salesforce.SObject (InsertResult, SObjectError, SObjectId(..), sobjectId, sobjectName)
 import Salesforce.SObject as SObject
+import Salesforce.Types.Common (UserInfo(..))
 
-newtype Account = Account { "Name" :: String, "RecordTypeId" :: String,  "C_ShinkiKizon__c" :: String}
+newtype Account   = Account { "Name" :: String, "RecordTypeId" :: String,  "C_ShinkiKizon__c" :: String}
 
 derive instance genericAccount :: Generic Account _
 
@@ -46,11 +49,11 @@ main = do
       secret >>= \s -> do 
         pure $ launchAff_ do  
             let soapConfig = Soap { username: username u
-                                    , password: password p  $ secretToken s
-                                    , instanceUrl: Nothing 
-                                    , envType: Sandbox
-                                    , version: 42.0
-                                    }
+                                  , password: password p  $ secretToken s
+                                  , instanceUrl: Nothing 
+                                  , envType: Sandbox
+                                  , version: 42.0
+                                  }
             conn <- login soapConfig
             liftEffect $ either (log <<< show ) (\c -> launchAff_ do 
                 liftEffect $ logShow c
@@ -59,10 +62,11 @@ main = do
                 -- liftEffect $ log $ either show show eitherAccount) conn
 
 app :: Connection -> Effect Unit
-app conn = launchAff_ do
+app conn@(Connection conn') = launchAff_ do
   s <- flip runSalesforceT conn do
-    eitherAcc <- try queryAccount 
-    pure $ either show show eitherAcc
+    eitherAp <- try $ approveRFQ (sobjectId "aB8N00000004D04") conn'.userInfo
+    -- eitherAcc <- try queryAccount 
+    pure $ either show show eitherAp
   liftEffect $ logShow s
    
 
@@ -77,3 +81,13 @@ updateAccount = SObject.update (sobjectName "Account") (sobjectId "001N000001KMS
 
 deleteAccount :: Salesforce SObjectError Unit 
 deleteAccount = SObject.delete (sobjectName "Account") (sobjectId "001N000001KMSep") 
+
+approveRFQ :: SObjectId -> UserInfo -> Salesforce ApprovalProcessError ApprovalResponse
+approveRFQ (SObjectId id) (UserInfo userInfo) = Approvals.execute $ Approvals.ApprovalProcess { actionType: Submit           
+                                                                                , contextActorId: userInfo.userId
+                                                                                , contextId: id
+                                                                                , comments: Nothing
+                                                                                , nextApproverIds: Nothing
+                                                                                , processDefinitionNameOrId: "RFQ_Approval_Process_V3"
+                                                                                , skipEntryCriteria: false
+                                                                                } 

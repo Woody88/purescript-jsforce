@@ -14,6 +14,7 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Foreign (MultipleErrors)
 import Foreign.Class (class Decode)
 import Foreign.Generic (defaultOptions, genericDecode)
+import Salesforce.ApprovalProcess.Types (ApprovalProcessError(..))
 import Salesforce.Connection.Types (Connection)
 import Salesforce.Query.Types (QueryError)
 import Salesforce.SObject.Types (SObjectError)
@@ -21,6 +22,8 @@ import Salesforce.SObject.Types (SObjectError)
 data SalesforceError 
   = SObjectErr SObjectError 
   | QueryErr QueryError
+  | ApprovalProcessErr ApprovalProcessError
+  | UnknownErr String
 
 derive instance genericSalesforceError :: Generic SalesforceError _ 
 
