@@ -69,7 +69,7 @@ fromUserPasswordSoap' user pswd env version = do
                                           , method = Left POST
                                           , responseFormat = ResponseFormat.string
                                           , content = Just body 
-                                          , headers = [RequestHeader "content-type" "text/xml", RequestHeader "SOAPAction" "\"\"" ]
+                                          , headers = [ RequestHeader "Access-Control-Allow-Origin" "*", RequestHeader "content-type" "text/xml", RequestHeader "SOAPAction" "\"\"" ]
                                           }) 
     pure $ do 
         xmlDoc <- res.body # handleSoapResponseError 
