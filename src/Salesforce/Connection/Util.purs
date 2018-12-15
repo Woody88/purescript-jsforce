@@ -35,6 +35,9 @@ maybeToEither :: forall e a. Maybe a -> e -> Either e a
 maybeToEither Nothing err = throwError err
 maybeToEither (Just x) _  = pure x
 
+idUrlRegex :: String
+idUrlRegex = "\\/id\\/(\\w+)\\/(\\w+)"
+
 -- unAuthConn :: Connection 
 -- unAuthConn = 
 --     Connection { access_token: mempty

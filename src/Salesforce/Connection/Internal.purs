@@ -16,19 +16,22 @@ import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (Pattern(..))
 import Data.String.Common (joinWith, split)
-import Data.String.Regex (match)
+import Data.String.Regex (Regex, match)
 import Data.String.Regex.Flags (noFlags)
 import Data.String.Regex.Unsafe (unsafeRegex)
-import Effect.Aff (Aff)
+import Data.String.Utils (startsWith)
+import Data.Traversable (sequence)
 import Effect (Effect)
+import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
 import Effect.Console (logShow)
 import Foreign.Class (decode)
 import Foreign.JSON (decodeJSONWith)
 import Record as Record
-import Salesforce.Connection.Types (ClientId, ClientSecret, CommonConfig, Connection(..), ConnectionConfig(..), EnvironmentType(..), GrantType(..), Password(..), RequestError(..), SecretToken(..), SessionId(..), Username(..), ConnectionAuth(..), toFormUrlParam)
+import Salesforce.Connection.Types (ResponseType(..), ClientId, ClientSecret, CommonConfig, Connection(..), ConnectionConfig(..), EnvironmentType(..), GrantType(..), Password(..), RequestError(..), SecretToken(..), SessionId(..), Username(..), ConnectionAuth(..), toFormUrlParam)
 import Salesforce.Connection.Util (maybeToEither, getXmlElVal, getUserInfo)
 import Salesforce.Types.Common (UserInfo(..))
+import Unsafe.Coerce (unsafeCoerce)
 import Web.HTML.Window (Window)
 import Web.HTML.Window as Window
 
@@ -61,7 +64,18 @@ soapUserPassBody (Username u) (Password p (SecretToken t)) =
 login :: ConnectionConfig -> Aff (Either RequestError Connection)
 login (Soap configs)          = fromUserPasswordSoap configs
 login (UserPassOauth configs) = fromUserPasswordOauth configs
+login (WebServerOauth configs) = fromUserWebServerOauth configs
 login _ = pure <<< Left $ ResponseDecodeError "Error"
+
+
+fromUserWebServerOauth 
+    :: { responseType :: ResponseType 
+       , clientId     :: ClientId 
+       , redirectUri  :: String | CommonConfig () 
+       }
+    -> Aff (Either RequestError Connection)
+fromUserWebServerOauth u@{ responseType, clientId, redirectUri } = pure $ unsafeCoerce u  ---- dont forget to remove unsafe coerce
+
 
 fromUserPasswordSoap :: { | CommonConfig () } -> Aff (Either RequestError Connection)  
 fromUserPasswordSoap {username, password, envType, version } = 
@@ -166,6 +180,25 @@ envUrl Sandbox    = sandboxUrl
   This function function retrieves the organization Id and user Id from 
   the Id url returned from an authenticated connection.
 -}
+parseUserInfoFromUrl :: forall e. (String -> e) -> String -> String -> Either e UserInfo
+parseUserInfoFromUrl error rg url = do
+    v <- (pure $ getUserInfo $ match regEx url) `maybeToEither` parseIdUrlError
+    parseResult $ sequence v 
+    where 
+        regEx = unsafeRegex rg noFlags
+
+        f' uInfo@(Right (UserInfo userInfo)) s = case (startsWith "005" s), (startsWith "00D" s) of
+            true, false  -> Right <<< UserInfo $ userInfo { userId = s }
+            false, true  -> Right <<< UserInfo $ userInfo { orgId = s }
+            _, _ -> Left parseIdUrlError
+        f' uInfo _ = Left parseIdUrlError
+
+        parseResult Nothing = Left <<< error $ "Id url regex failed."
+        parseResult (Just l) = foldl f' (Right <<< UserInfo $ {userId: mempty, orgId: mempty, url: url}) l
+
+        parseIdUrlError = error "Id url regex failed."
+
+
 parseUserInfoFromIdUrl :: forall e. (String -> e) -> String -> Either e UserInfo 
 parseUserInfoFromIdUrl f url = do 
     v <- (pure $ getUserInfo $ match rg url) `maybeToEither` parseIdUrlError

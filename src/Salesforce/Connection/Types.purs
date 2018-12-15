@@ -14,7 +14,7 @@ import Data.Semigroup (append)
 import Data.Tuple (Tuple(..))
 import Data.Tuple.Nested ((/\))
 import Foreign.Class (class Encode, class Decode, encode, decode)
-import Foreign.Generic (defaultOptions, genericDecode)
+import Foreign.Generic (defaultOptions, genericDecode, genericEncode)
 import Salesforce.Types.Common (UserInfo)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -24,11 +24,28 @@ newtype ClientId = ClientId String
 newtype ClientSecret = Secret String 
 newtype SessionId = SessionId String  
 
+data OauthErrorDescription 
+    = UnsupportedResponseType 
+    | InvalidClientId 
+    | InvalidRequest 
+    | AccessDenied 
+    | RedirectUriMissing 
+    | RedirectUriMismatch 
+    | ImmediateUnsuccessful
+    | InvalidGrant
+    | InactiveUser
+    | InactiveOrg
+    | RateLimitExceeded
+    | InvalidScope
+
 type ConnectionError' 
-    = ( error            :: String
-      , errorDescription :: Maybe String 
-      , state            :: Maybe String
+    = ( error             :: String
+      , error_description :: Maybe String 
+      , state             :: Maybe String
       )
+
+-- type OauthConfig 
+--     = ( response_type)
 
 type CommonConfig r 
     = ( username    :: Username 
@@ -69,17 +86,25 @@ data ConnectionConfig
                     , clientSecret :: ClientSecret
                     | CommonConfig ()
                     }
+    | WebServerOauth { responseType :: ResponseType 
+                     , clientId     :: ClientId
+                     , redirectUri  :: String
+                     | CommonConfig ()
+                     }
     | Soap { | CommonConfig () } 
 
 data RequestError = ResponseDecodeError String | DecodeError String 
 data Password = Password String SecretToken 
 data EnvironmentType = Production | Sandbox
 data GrantType = GPassword | GToken 
+data ResponseType = RToken | RCode 
 
 derive instance genericConnectionAuth :: Generic ConnectionAuth _
 derive instance genericConnectionError :: Generic ConnectionError _
 derive instance genericConnection :: Generic Connection _
 derive instance genericRequestError :: Generic RequestError _
+
+derive instance eqRequestError :: Eq RequestError 
 
 instance showConnection :: Show Connection where
   show = genericShow
@@ -102,15 +127,27 @@ instance decodeConnectionError :: Decode ConnectionError where
 instance decodeConnection :: Decode Connection where 
     decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
 
+instance encodeConnection :: Encode Connection where 
+    encode = genericEncode $ defaultOptions { unwrapSingleConstructors = true }
+
+
+
 instance showGrantType :: Show GrantType where
   show GPassword = "password"
   show GToken    = "token"
+
+instance showResponseType :: Show ResponseType where
+  show RToken = "token"
+  show RCode    = "code"
 
 class ToFormUrlParam a where 
     toFormUrlParam :: a -> Tuple String (Maybe String) 
 
 instance toParamGrantType :: ToFormUrlParam GrantType where
     toFormUrlParam gt = "grant_type" /\ (pure <<< show $ gt)
+
+instance toParamResponseType :: ToFormUrlParam ResponseType where
+    toFormUrlParam gt = "response_type" /\ (pure <<< show $ gt)
 
 instance toParamClientId :: ToFormUrlParam ClientId where 
     toFormUrlParam (ClientId i) = "client_id" /\ (pure i)
