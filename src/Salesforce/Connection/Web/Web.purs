@@ -13,7 +13,7 @@ import Data.Bifunctor (lmap)
 import Data.Either (Either(..), either)
 import Data.Foldable (oneOf, foldl)
 import Data.Map as Map
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe, maybe)
 import Data.String as String
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
@@ -38,6 +38,8 @@ import Web.HTML.Window as Window
 
 foreign import windowOpener :: Effect Window 
 
+foreign import windowClose :: Window -> Effect Unit 
+
 foreign import sforceConnectedImpl :: Event -> Foreign
 
 foreign import sforceConnectedEventImpl :: EventType -> Foreign -> CustomEvent
@@ -50,18 +52,20 @@ sforceConnectedEvent et eitherConnection = sforceConnectedEventImpl et $ either 
 
 loginOauth :: { serverUrl :: String, response_type :: String, clientId :: ClientId, redirect_uri :: String, scope :: String } -> Window -> (Either OauthError Connection -> Effect Unit) -> Effect (Maybe Window)
 loginOauth {serverUrl, response_type, clientId: (ClientId clientid), redirect_uri, scope} window f = do
+    let url = serverUrl <> "?response_type=" <> response_type <> "&client_id=" <> clientid <> "&redirect_uri=" <> redirect_uri <> "&scope=" <> scope
+    
+     -- Open Sforce Login Window
+    authWindow <- Window.open url "SForce Login Page" "_blank" window
 
     -- event listener
-    sfLoginListener <- eventListener (\e -> f $ sforceConnected e)
+    sfLoginListener <- eventListener (\e -> (f $ sforceConnected e) *> (maybe (pure unit) windowClose authWindow))
 
     -- Set connection listen to main window
     addEventListener (EventType "sforceConnected") sfLoginListener false $ Window.toEventTarget window
     
     log "Added Event Listener"
     
-    let url = serverUrl <> "?response_type=" <> response_type <> "&client_id=" <> clientid <> "&redirect_uri=" <> redirect_uri <> "&scope=" <> scope
-    -- Open Sforce Login Window
-    Window.open url "SForce Login Page" "_blank" window
+    pure authWindow
 
 -- -- Should the previous sforceConnected listener be removed when this function is called?
 connectOauth :: LocationState -> Window -> Effect Unit 
