@@ -16,17 +16,24 @@ import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (Pattern(..))
 import Data.String.Common (joinWith, split)
-import Data.String.Regex (match)
+import Data.String.Regex (Regex, match)
 import Data.String.Regex.Flags (noFlags)
 import Data.String.Regex.Unsafe (unsafeRegex)
+import Data.String.Utils (startsWith)
+import Data.Traversable (sequence)
+import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
 import Effect.Console (logShow)
 import Foreign.Class (decode)
 import Foreign.JSON (decodeJSONWith)
-import Salesforce.Connection.Types (ClientId, ClientSecret, CommonConfig, Connection(..), ConnectionConfig(..), EnvironmentType(..), GrantType(..), Password(..), RequestError(..), SecretToken(..), SessionId(..), Username(..), ConnectionAuth(..), toFormUrlParam)
-import Salesforce.Connection.Util (maybeToEither, getXmlElVal, getUserInfo)
+import Record as Record
+import Salesforce.Connection.Types (ResponseType(..), ClientId, ClientSecret, CommonConfig, Connection(..), ConnectionConfig(..), EnvironmentType(..), GrantType(..), Password(..), RequestError(..), SecretToken(..), SessionId(..), Username(..), ConnectionAuth(..), toFormUrlParam)
+import Salesforce.Connection.Util (maybeToEither, getXmlElVal, getUserInfo, idUrlRegex)
 import Salesforce.Types.Common (UserInfo(..))
+import Unsafe.Coerce (unsafeCoerce)
+import Web.HTML.Window (Window)
+import Web.HTML.Window as Window
 
 productionUrl :: String 
 productionUrl = "https://login.salesforce.com"
@@ -56,8 +63,18 @@ soapUserPassBody (Username u) (Password p (SecretToken t)) =
 
 login :: ConnectionConfig -> Aff (Either RequestError Connection)
 login (Soap configs)          = fromUserPasswordSoap configs
-login (SessionOauth configs)  = fromSession configs
 login (UserPassOauth configs) = fromUserPasswordOauth configs
+login (WebServerOauth configs) = fromUserWebServerOauth configs
+login _ = pure <<< Left $ ResponseDecodeError "Error"
+
+
+fromUserWebServerOauth 
+    :: { responseType :: ResponseType 
+       , clientId     :: ClientId 
+       , redirectUri  :: String | CommonConfig () 
+       }
+    -> Aff (Either RequestError Connection)
+fromUserWebServerOauth u@{ responseType, clientId, redirectUri } = pure $ unsafeCoerce u  ---- dont forget to remove unsafe coerce
 
 fromUserPasswordSoap :: { | CommonConfig () } -> Aff (Either RequestError Connection)  
 fromUserPasswordSoap {username, password, envType, version } = 
@@ -112,7 +129,7 @@ handleSoapResponseError = lmap (\err -> do
 
 fromSession :: { sessionId :: SessionId, serverUrl :: String | CommonConfig () } -> Aff (Either RequestError Connection) 
 fromSession {sessionId: (SessionId sessionId), serverUrl, envType} = pure do 
-    userInfo <- parseUserInfoFromIdUrl serverUrl 
+    userInfo <- parseUserInfoFromUrl ResponseDecodeError idUrlRegex serverUrl 
     pure do 
         Connection { access_token:  sessionId
                    , token_type:    Nothing
@@ -126,6 +143,8 @@ fromSession {sessionId: (SessionId sessionId), serverUrl, envType} = pure do
                    , userInfo
                    }
 
+fromSession' :: { sessionId :: SessionId, serverUrl :: String | CommonConfig () } -> Window ->  Effect (Maybe Window) 
+fromSession'  {sessionId: (SessionId sessionId), serverUrl, envType} window = Window.open serverUrl "SForce Login Page" mempty window
 
 fromUserPasswordOauth :: { clientId :: ClientId, clientSecret :: ClientSecret | CommonConfig () } -> Aff (Either RequestError Connection)  
 fromUserPasswordOauth {clientId, clientSecret, username, password, envType } = 
@@ -137,18 +156,9 @@ fromUserPasswordOauth' user pswd cs cid env = do
     pure $ do 
         json     <- res.body # handleResponseError url
         (ConnectionAuth connAuth) <- ((runExcept $ runDecoder $ J.stringify json) # handleDecodeError) :: Either RequestError ConnectionAuth
-        userInfo <- parseUserInfoFromIdUrl connAuth.id 
-        pure $ Connection { userInfo
-                          , id: connAuth.id 
-                          , instance_url: connAuth.instance_url
-                          , access_token: connAuth.access_token
-                          , token_type: connAuth.token_type
-                          , refresh_token: connAuth.refresh_token
-                          , scope: connAuth.scope
-                          , state: connAuth.state
-                          , issued_at: connAuth.issued_at
-                          , signature: connAuth.signature
-                          }
+        userInfo <- parseUserInfoFromUrl ResponseDecodeError idUrlRegex connAuth.id 
+        pure <<< Connection $ Record.merge {userInfo: userInfo} connAuth 
+
     where 
         grantType = GPassword 
         envurl = envUrl env
@@ -169,13 +179,20 @@ envUrl Sandbox    = sandboxUrl
   This function function retrieves the organization Id and user Id from 
   the Id url returned from an authenticated connection.
 -}
-parseUserInfoFromIdUrl :: String -> Either RequestError UserInfo 
-parseUserInfoFromIdUrl url = do 
-    v <- (pure $ getUserInfo $ match rg url) `maybeToEither` parseIdUrlError
-    case v of
-        [(Just userId), (Just orgId)] -> pure $ UserInfo  { userId, orgId, url}
-        _  -> throwError parseIdUrlError
-    where
-        rg = unsafeRegex "\\/(\\w+)\\/id\\/(\\w+)\\/" noFlags
-        parseIdUrlError = ResponseDecodeError $ "Id url regex failed."
-        
+parseUserInfoFromUrl :: forall e. (String -> e) -> String -> String -> Either e UserInfo
+parseUserInfoFromUrl error rg url = do
+    v <- (pure $ getUserInfo $ match regEx url) `maybeToEither` parseIdUrlError
+    parseResult $ sequence v 
+    where 
+        regEx = unsafeRegex rg noFlags
+
+        f' uInfo@(Right (UserInfo userInfo)) s = case (startsWith "005" s), (startsWith "00D" s) of
+            true, false  -> Right <<< UserInfo $ userInfo { userId = s }
+            false, true  -> Right <<< UserInfo $ userInfo { orgId = s }
+            _, _ -> Left parseIdUrlError
+        f' uInfo _ = Left parseIdUrlError
+
+        parseResult Nothing = Left <<< error $ "Id url regex failed."
+        parseResult (Just l) = foldl f' (Right <<< UserInfo $ {userId: mempty, orgId: mempty, url: url}) l
+
+        parseIdUrlError = error "Id url regex failed."
