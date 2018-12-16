@@ -29,7 +29,7 @@ import Foreign.Class (decode)
 import Foreign.JSON (decodeJSONWith)
 import Record as Record
 import Salesforce.Connection.Types (ResponseType(..), ClientId, ClientSecret, CommonConfig, Connection(..), ConnectionConfig(..), EnvironmentType(..), GrantType(..), Password(..), RequestError(..), SecretToken(..), SessionId(..), Username(..), ConnectionAuth(..), toFormUrlParam)
-import Salesforce.Connection.Util (maybeToEither, getXmlElVal, getUserInfo)
+import Salesforce.Connection.Util (maybeToEither, getXmlElVal, getUserInfo, idUrlRegex)
 import Salesforce.Types.Common (UserInfo(..))
 import Unsafe.Coerce (unsafeCoerce)
 import Web.HTML.Window (Window)
@@ -75,7 +75,6 @@ fromUserWebServerOauth
        }
     -> Aff (Either RequestError Connection)
 fromUserWebServerOauth u@{ responseType, clientId, redirectUri } = pure $ unsafeCoerce u  ---- dont forget to remove unsafe coerce
-
 
 fromUserPasswordSoap :: { | CommonConfig () } -> Aff (Either RequestError Connection)  
 fromUserPasswordSoap {username, password, envType, version } = 
@@ -130,7 +129,7 @@ handleSoapResponseError = lmap (\err -> do
 
 fromSession :: { sessionId :: SessionId, serverUrl :: String | CommonConfig () } -> Aff (Either RequestError Connection) 
 fromSession {sessionId: (SessionId sessionId), serverUrl, envType} = pure do 
-    userInfo <- parseUserInfoFromIdUrl ResponseDecodeError serverUrl 
+    userInfo <- parseUserInfoFromUrl ResponseDecodeError idUrlRegex serverUrl 
     pure do 
         Connection { access_token:  sessionId
                    , token_type:    Nothing
@@ -157,7 +156,7 @@ fromUserPasswordOauth' user pswd cs cid env = do
     pure $ do 
         json     <- res.body # handleResponseError url
         (ConnectionAuth connAuth) <- ((runExcept $ runDecoder $ J.stringify json) # handleDecodeError) :: Either RequestError ConnectionAuth
-        userInfo <- parseUserInfoFromIdUrl ResponseDecodeError connAuth.id 
+        userInfo <- parseUserInfoFromUrl ResponseDecodeError idUrlRegex connAuth.id 
         pure <<< Connection $ Record.merge {userInfo: userInfo} connAuth 
 
     where 
@@ -197,15 +196,3 @@ parseUserInfoFromUrl error rg url = do
         parseResult (Just l) = foldl f' (Right <<< UserInfo $ {userId: mempty, orgId: mempty, url: url}) l
 
         parseIdUrlError = error "Id url regex failed."
-
-
-parseUserInfoFromIdUrl :: forall e. (String -> e) -> String -> Either e UserInfo 
-parseUserInfoFromIdUrl f url = do 
-    v <- (pure $ getUserInfo $ match rg url) `maybeToEither` parseIdUrlError
-    case v of
-        [(Just userId), (Just orgId)] -> pure $ UserInfo  { userId, orgId, url}
-        _  -> throwError parseIdUrlError
-    where
-        rg = unsafeRegex "\\/(\\w+)\\/id\\/(\\w+)\\/" noFlags
-        parseIdUrlError = f "Id url regex failed."
-        
