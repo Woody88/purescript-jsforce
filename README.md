@@ -1,2 +1,2 @@
-# purescript-jsforce
-Purescript wrapper of Jsforce library
+# purescript-sforce
+Salesforce Rest API library in Purescript
