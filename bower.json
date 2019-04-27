@@ -9,7 +9,15 @@
   "dependencies": {
     "purescript-prelude": "^4.1.1",
     "purescript-console": "^4.2.0",
-    "purescript-effect": "^2.0.1"
+    "purescript-effect": "^2.0.1",
+    "purescript-argonaut-core": "^5.0.0",
+    "purescript-argonaut-codecs": "^6.0.1",
+    "purescript-typelevel-prelude": "^4.0.0",
+    "purescript-aff": "^5.1.1",
+    "purescript-affjax": "^9.0.0",
+    "purescript-variant": "^6.0.0",
+    "purescript-generics-rep": "^6.1.1",
+    "purescript-strings": "^4.0.1"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0"
