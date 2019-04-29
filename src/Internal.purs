@@ -2,13 +2,13 @@ module Salesforce.Internal where
 
 import Prelude
 
-import Affjax (Response, ResponseFormatError(..), printResponseFormatError)
+import Affjax (Response, ResponseFormatError, printResponseFormatError)
 import Affjax.StatusCode (StatusCode(..))
 import Control.Monad.Error.Class (throwError)
 import Control.Plus (empty)
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode (decodeJson, (.:), (.:?))
-import Data.Bifunctor (bimap, lmap)
+import Data.Bifunctor (lmap)
 import Data.Either (Either, either)
 import Data.Maybe (Maybe)
 import Salesforce.Connection.Types (Connection)
