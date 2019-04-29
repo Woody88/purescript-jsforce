@@ -1,8 +1,10 @@
 module Salesforce.Types where
 
 import Prelude
+
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Data.Either (Either)
+import Data.Variant (Variant)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
@@ -11,6 +13,8 @@ import Salesforce.Connection.Types (Connection)
 newtype SalesforceM a = SalesforceM (Connection -> Aff a)
 
 type Salesforce e a = ExceptT e SalesforceM a
+
+type SalesforceV e a = Salesforce (Variant e) a 
 
 instance functorSalesforceM :: Functor SalesforceM where
   map f (SalesforceM s) = SalesforceM \c -> f <$> s c  
