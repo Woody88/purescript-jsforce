@@ -18,7 +18,8 @@
     "purescript-variant": "^6.0.0",
     "purescript-generics-rep": "^6.1.1",
     "purescript-strings": "^4.0.1",
-    "purescript-checked-exceptions": "^2.0.0"
+    "purescript-checked-exceptions": "^2.0.0",
+    "purescript-spec": "^3.1.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0"

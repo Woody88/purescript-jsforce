@@ -1,9 +1,13 @@
 module Test.Main where
 
 import Prelude
+
 import Effect (Effect)
-import Effect.Console (log)
+import Test.Endpoints.QuerySpec as Query
+import Test.RequestSpec as Request
+import Test.Spec.Reporter (consoleReporter)
+import Test.Spec.Runner (run)
 
 main :: Effect Unit
-main = do
-  log "You should add some tests."
+main = run [consoleReporter] do 
+  Request.spec
