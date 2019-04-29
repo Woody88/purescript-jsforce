@@ -14,16 +14,26 @@ import Data.Maybe (Maybe)
 import Salesforce.Connection.Types (Connection)
 import Salesforce.Util (Url)
 
+foreign import kind NetworkType  
+
+foreign import data Affjax :: NetworkType 
+
+data NTProxy (n :: NetworkType) = NTProxy 
+
+affjaxNetwork :: NTProxy Affjax 
+affjaxNetwork = NTProxy
+
 type NetworkError = { errorCode :: String, message :: String, fields :: Maybe (Array String)}
 
 class HasEndpoint sfapi where 
     endpointUrl :: Connection -> sfapi -> Url
 
-class HasNetwork m sfapi where 
+class HasNetwork m sfapi (n :: NetworkType) where 
     request :: 
         HasEndpoint sfapi  
         => Applicative m
-        => Connection
+        => NTProxy n
+        -> Connection
         -> sfapi  
         -> m (Either NetworkError Json)
 

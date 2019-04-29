@@ -11,7 +11,7 @@ import Data.String (Pattern(..), Replacement(..))
 import Data.String as String
 import Effect.Aff (Aff)
 import Salesforce.Connection.Util (baseUrl, authorizationHeader)
-import Salesforce.Internal (class HasEndpoint, class HasNetwork, NetworkError, endpointUrl, validateRequest)
+import Salesforce.Internal (class HasEndpoint, class HasNetwork, Affjax, NetworkError, endpointUrl, validateRequest, kind NetworkType)
 
 newtype SOQL r = SOQL String  
 
@@ -30,8 +30,8 @@ instance hasQueryEndpoint :: HasEndpoint (QueryEndpoint r) where
             Query (SOQL soql)        -> baseUrl conn <> "/query/?q=" <> formatSoqlToUrlParams soql 
             QueryExplain (SOQL soql) -> baseUrl conn <> "/query/?explain=" <> formatSoqlToUrlParams soql 
 
-instance hasQueryNetwork :: HasNetwork Aff (QueryEndpoint r) where 
-    request conn queryEndpoint = do 
+instance hasQueryNetwork :: HasNetwork Aff (QueryEndpoint r) Affjax where 
+    request _ conn queryEndpoint = do 
         let url        = endpointUrl conn queryEndpoint 
             authHeader = authorizationHeader conn 
         res <- AX.request (AX.defaultRequest { url = url
