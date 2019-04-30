@@ -2,51 +2,48 @@ module Salesforce.Types where
 
 import Prelude
 
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
+import Control.Monad.Except.Trans (class MonadThrow, ExceptT, runExceptT)
+import Control.Monad.Reader.Trans (class MonadAsk, ReaderT, ask, runReaderT)
 import Data.Either (Either)
+import Data.Maybe (Maybe)
 import Data.Variant (Variant)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class (class MonadEffect, liftEffect)
+import Effect.Class (class MonadEffect)
 import Salesforce.Connection.Types (Connection)
 
-newtype SalesforceM a = SalesforceM (Connection -> Aff a)
+newtype SalesforceM e a = SalesforceM (ReaderT Connection (ExceptT e Aff) a)
+type Salesforce e a = SalesforceM e a 
+type SalesforceV e a = SalesforceM (Variant e) a 
 
-type Salesforce e a = ExceptT e SalesforceM a
+derive newtype instance functorSalesforceM       :: Functor (SalesforceM e)
+derive newtype instance applySalesforceM         :: Apply (SalesforceM e)
+derive newtype instance applicativeSalesforceM   :: Applicative (SalesforceM e)
+derive newtype instance bindSalesforceM          :: Bind (SalesforceM e)
+derive newtype instance monadSalesforceM         :: Monad (SalesforceM e)
 
-type SalesforceV e a = Salesforce (Variant e) a 
 
-instance functorSalesforceM :: Functor SalesforceM where
-  map f (SalesforceM s) = SalesforceM \c -> f <$> s c  
+derive newtype instance monadEffectSalesforceM   :: MonadEffect (SalesforceM e)
+derive newtype instance monadAffectSalesforceM   :: MonadAff (SalesforceM e)
 
-instance applySalesforceM:: Apply SalesforceM where
-  apply (SalesforceM f) (SalesforceM s) = SalesforceM \c -> f c <*> s c 
+derive newtype instance monadAskSalesforceM      :: MonadAsk Connection (SalesforceM e)
+derive newtype instance monadThrowSalesforceM    :: MonadThrow e (SalesforceM e)
 
-instance applicativeSalesforceM :: Applicative SalesforceM where 
-  pure x = SalesforceM \c -> pure x
+runSalesforce :: forall e a. SalesforceM e a -> Connection -> Aff (Either e a)
+runSalesforce (SalesforceM f) conn = runExceptT $ runReaderT f conn
 
-instance bindSalesforceM :: Bind SalesforceM where
-  bind (SalesforceM s) f = SalesforceM \c -> do 
-    a <- s c
-    let (SalesforceM g) = f a
-    g c
+salesforce :: forall e a. ReaderT Connection (ExceptT e Aff) a -> Salesforce e a
+salesforce = SalesforceM
 
-instance monadSalesforceM :: Monad SalesforceM  
+getConnection :: forall e. SalesforceM e Connection 
+getConnection = ask
 
-instance monadEffectSalesforceM :: MonadEffect SalesforceM where
-  liftEffect a = SalesforceM \_ -> liftEffect a
+foreign import kind NetworkType  
 
-instance monadAffectSalesforceM :: MonadAff SalesforceM where
-  liftAff a = SalesforceM \_ -> a
+foreign import data Affjax :: NetworkType 
 
-runSalesforce :: forall a. SalesforceM a -> Connection -> Aff a
-runSalesforce (SalesforceM f) conn =
-  f conn
+data NTProxy (n :: NetworkType) = NTProxy 
 
-salesforce :: forall e a. (Connection -> Aff (Either e a)) -> Salesforce e a
-salesforce = ExceptT <<< SalesforceM
+type NetworkError = { errorCode :: String, message :: String, fields :: Maybe (Array String)}
 
-runSalesforceT :: forall e a. Salesforce e a -> Connection -> Aff (Either e a)
-runSalesforceT s conn = do
-  let (SalesforceM f) = runExceptT s
-  f conn
+
