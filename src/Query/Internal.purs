@@ -24,14 +24,15 @@ queryExplain soql = salesforce \conn -> do
     res <- (lmap queryError) <$> (request affjaxNetwork conn $ QueryExplain soql) 
     pure $ res >>= lmap queryParseError <<< decodeJson 
 
-queryRequest :: forall sobject nt. 
-    HasNetwork Aff (QueryEndpoint sobject) nt 
+queryRequest :: forall sobject m nt. 
+    Applicative m
+    => HasNetwork m (QueryEndpoint sobject) nt 
     => NTProxy nt 
     -> Connection
     -> QueryEndpoint sobject  
-    -> Aff (Either NetworkError Json)
+    -> m (Either NetworkError Json)
 queryRequest nt conn q = request nt conn q 
-
+    
 queryError :: forall r. NetworkError -> Variant (queryError :: NetworkError | r) 
 queryError = inj (SProxy :: SProxy "queryError") 
 
