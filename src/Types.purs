@@ -2,7 +2,7 @@ module Salesforce.Types where
 
 import Prelude
 
-import Control.Monad.Except.Trans (class MonadThrow, ExceptT, runExceptT)
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Reader.Trans (class MonadAsk, ReaderT, ask, runReaderT)
 import Data.Either (Either)
 import Data.Maybe (Maybe)
@@ -12,30 +12,35 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Salesforce.Connection.Types (Connection)
 
-newtype SalesforceM e a = SalesforceM (ReaderT Connection (ExceptT e Aff) a)
-type Salesforce e a = SalesforceM e a 
-type SalesforceV e a = SalesforceM (Variant e) a 
+newtype SalesforceM a = SalesforceM (ReaderT Connection Aff a)
+type Salesforce e a = ExceptT e SalesforceM a 
+type SalesforceV e a = Salesforce (Variant e) a 
 
-derive newtype instance functorSalesforceM       :: Functor (SalesforceM e)
-derive newtype instance applySalesforceM         :: Apply (SalesforceM e)
-derive newtype instance applicativeSalesforceM   :: Applicative (SalesforceM e)
-derive newtype instance bindSalesforceM          :: Bind (SalesforceM e)
-derive newtype instance monadSalesforceM         :: Monad (SalesforceM e)
+derive newtype instance functorSalesforceM       :: Functor SalesforceM
+derive newtype instance applySalesforceM         :: Apply SalesforceM
+derive newtype instance applicativeSalesforceM   :: Applicative SalesforceM
+derive newtype instance bindSalesforceM          :: Bind SalesforceM
+derive newtype instance monadSalesforceM         :: Monad SalesforceM
 
 
-derive newtype instance monadEffectSalesforceM   :: MonadEffect (SalesforceM e)
-derive newtype instance monadAffectSalesforceM   :: MonadAff (SalesforceM e)
+derive newtype instance monadEffectSalesforceM   :: MonadEffect SalesforceM
+derive newtype instance monadAffectSalesforceM   :: MonadAff SalesforceM
 
-derive newtype instance monadAskSalesforceM      :: MonadAsk Connection (SalesforceM e)
-derive newtype instance monadThrowSalesforceM    :: MonadThrow e (SalesforceM e)
+derive newtype instance monadAskSalesforceM      :: MonadAsk Connection SalesforceM
 
-runSalesforce :: forall e a. SalesforceM e a -> Connection -> Aff (Either e a)
-runSalesforce (SalesforceM f) conn = runExceptT $ runReaderT f conn
+runSalesforce :: forall a. SalesforceM a -> Connection -> Aff a
+runSalesforce (SalesforceM f) conn = runReaderT f conn
 
-salesforce :: forall e a. ReaderT Connection (ExceptT e Aff) a -> Salesforce e a
-salesforce = SalesforceM
+runSalesforceT :: forall e a. Salesforce e a -> Connection -> Aff (Either e a)
+runSalesforceT s conn = flip runSalesforce conn $ runExceptT s 
 
-getConnection :: forall e. SalesforceM e Connection 
+salesforce :: forall e a. ReaderT Connection Aff (Either e a) -> Salesforce e a
+salesforce = ExceptT <<< SalesforceM
+
+salesforceV :: forall e a. ReaderT Connection Aff (Either (Variant e) a) -> SalesforceV e a
+salesforceV = salesforce
+
+getConnection :: SalesforceM Connection 
 getConnection = ask
 
 foreign import kind NetworkType  

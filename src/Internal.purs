@@ -7,8 +7,9 @@ import Affjax as AX
 import Affjax.RequestHeader (RequestHeader(..))
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import Control.Monad.Error.Class (class MonadThrow, throwError)
-import Control.Monad.Reader (class MonadReader)
+import Control.Monad.Error.Class (throwError)
+import Control.Monad.Except (ExceptT(..), except)
+import Control.Monad.Reader (class MonadReader, ask)
 import Control.Plus (empty)
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode (decodeJson, (.:), (.:?))
@@ -21,8 +22,11 @@ import Effect.Aff.Class (class MonadAff, liftAff)
 import Salesforce.Connection.Types (Connection)
 import Salesforce.Connection.Util (baseUrl, authorizationHeader)
 import Salesforce.Query.Types (QueryEndpoint(..), SOQL(..))
-import Salesforce.Types (Affjax, NTProxy, NetworkError, SalesforceM, getConnection, kind NetworkType)
+import Salesforce.Types (Affjax, NTProxy(..), NetworkError, SalesforceM, getConnection, kind NetworkType)
 import Salesforce.Util (Url)
+
+affjaxNetwork :: NTProxy Affjax 
+affjaxNetwork = NTProxy  
 
 class HasEndpoint sfapi where 
     endpointUrl :: Connection -> sfapi -> Url
@@ -41,33 +45,26 @@ class HasNetwork m sfapi (n :: NetworkType) where
     request :: 
         HasEndpoint sfapi  
         => MonadReader Connection m
-        => MonadThrow NetworkError m 
         => MonadAff m
         => Applicative m
         => NTProxy n
         -> sfapi  
-        -> m Json
+        -> m (Either NetworkError Json)
 
 
-instance hasQueryNetwork :: HasNetwork (SalesforceM e) (QueryEndpoint r) Affjax where 
-    request _ queryEndpoint = do 
-        conn <- getConnection
-        let url        = endpointUrl conn queryEndpoint 
-            authHeader = authorizationHeader conn 
-        res <- liftAff $ AX.request (AX.defaultRequest { url = url
-                                             , method = Left GET
-                                             , responseFormat = ResponseFormat.json
-                                             , headers = [RequestHeader "Authorization" authHeader]
-                                             }) 
-        either throwError pure $ validateRequest res
-
-
-
-
-
-
-
-
+instance hasQueryNetwork :: HasNetwork m (QueryEndpoint r) Affjax where 
+    request _ queryEndpoint = do
+        conn <- ask
+        let
+            url = endpointUrl conn queryEndpoint
+            authHeader = authorizationHeader conn
+        res <- liftAff $ AX.request $ AX.defaultRequest
+            { url = url
+            , method = Left GET
+            , responseFormat = ResponseFormat.json
+            , headers = [ RequestHeader "Authorization" authHeader ]
+            }
+        pure $ validateRequest res
 
 networkParseError :: String -> NetworkError
 networkParseError message = {errorCode: "Network Parse Error", fields: empty, message} 

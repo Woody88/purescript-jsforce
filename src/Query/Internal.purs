@@ -2,37 +2,49 @@ module Salesforce.Query.Internal where
 
 import Prelude
 
-import Data.Argonaut.Core (Json)
+import Control.Monad.Reader (class MonadReader)
 import Data.Argonaut.Decode (class DecodeJson, decodeJson)
 import Data.Bifunctor (lmap)
-import Data.Either (Either)
 import Data.Variant (SProxy(..), Variant, inj)
-import Effect.Aff (Aff)
+import Effect.Aff.Class (class MonadAff)
 import Salesforce.Connection.Types (Connection)
-import Salesforce.Internal (class HasNetwork, NTProxy, NetworkError, affjaxNetwork, request)
-import Salesforce.Query.Types (QueryEndpoint(..), QueryError, SOQL)
-import Salesforce.Types (SalesforceV, salesforce)
+import Salesforce.Internal (class HasNetwork, affjaxNetwork, request)
+import Salesforce.Query.Types (QueryEndpoint(..), QueryError, QueryResult, SOQL)
+import Salesforce.Types (NTProxy, NetworkError)
+import Salesforce.Util (EitherV)
 import Type.Row (type (+))
 
-query :: forall sobject r. DecodeJson sobject => SOQL sobject -> SalesforceV (QueryError + r) sobject
-query soql = salesforce \conn -> do 
-    res <- (lmap queryError) <$> (queryRequest affjaxNetwork conn $ Query soql) 
-    pure $ res >>= lmap queryParseError <<< decodeJson
+query :: forall sobject r m. 
+    MonadReader Connection m 
+    => MonadAff m
+    => DecodeJson sobject 
+    => SOQL sobject 
+    -> m (EitherV (QueryError + r) (QueryResult sobject))
+query soql = do 
+    queryRequest affjaxNetwork $ Query soql
 
-queryExplain :: forall sobject r. DecodeJson sobject => SOQL sobject -> SalesforceV (QueryError + r) sobject
-queryExplain soql = salesforce \conn -> do 
-    res <- (lmap queryError) <$> (request affjaxNetwork conn $ QueryExplain soql) 
-    pure $ res >>= lmap queryParseError <<< decodeJson 
+queryExplain :: forall sobject r m. 
+    MonadReader Connection m 
+    => MonadAff m
+    => DecodeJson sobject 
+    => SOQL sobject 
+    -> m (EitherV (QueryError + r) (QueryResult sobject))
+queryExplain soql = do 
+    queryRequest affjaxNetwork $ QueryExplain soql
 
-queryRequest :: forall sobject m nt. 
-    Applicative m
+queryRequest :: forall m sobject nt r.
+    Applicative m 
+    => DecodeJson sobject
     => HasNetwork m (QueryEndpoint sobject) nt 
+    => MonadReader Connection m
+    => MonadAff m
     => NTProxy nt 
-    -> Connection
     -> QueryEndpoint sobject  
-    -> m (Either NetworkError Json)
-queryRequest nt conn q = request nt conn q 
-    
+    -> m (EitherV (QueryError + r) (QueryResult sobject))
+queryRequest nt q = do 
+    json <- lmap queryError <$> request nt q
+    pure $ json >>= (lmap queryParseError <<< decodeJson)
+
 queryError :: forall r. NetworkError -> Variant (queryError :: NetworkError | r) 
 queryError = inj (SProxy :: SProxy "queryError") 
 
