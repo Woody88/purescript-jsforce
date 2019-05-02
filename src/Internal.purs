@@ -22,11 +22,13 @@ import Effect.Aff.Class (class MonadAff, liftAff)
 import Salesforce.Connection.Types (Connection)
 import Salesforce.Connection.Util (baseUrl, authorizationHeader)
 import Salesforce.Query.Types (QueryEndpoint(..), SOQL(..))
-import Salesforce.Types (Affjax, NTProxy(..), NetworkError, SalesforceM, getConnection, kind NetworkType)
+import Salesforce.Types (Affjax, NTProxy(..), NetworkError, kind NetworkType)
 import Salesforce.Util (Url)
 
 affjaxNetwork :: NTProxy Affjax 
 affjaxNetwork = NTProxy  
+
+class Functor m <= HasNetworkType m (n :: NetworkType) | m -> n
 
 class HasEndpoint sfapi where 
     endpointUrl :: Connection -> sfapi -> Url
@@ -44,16 +46,16 @@ instance hasQueryEndpoint :: HasEndpoint (QueryEndpoint r) where
 class HasNetwork m sfapi (n :: NetworkType) where 
     request :: 
         HasEndpoint sfapi  
+        => HasNetworkType m n
         => MonadReader Connection m
         => MonadAff m
         => Applicative m
-        => NTProxy n
-        -> sfapi  
+        => sfapi  
         -> m (Either NetworkError Json)
 
 
 instance hasQueryNetwork :: HasNetwork m (QueryEndpoint r) Affjax where 
-    request _ queryEndpoint = do
+    request queryEndpoint = do
         conn <- ask
         let
             url = endpointUrl conn queryEndpoint

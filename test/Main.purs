@@ -10,4 +10,4 @@ import Test.Spec.Runner (run)
 
 main :: Effect Unit
 main = run [consoleReporter] do 
-  Request.spec
+  Query.spec

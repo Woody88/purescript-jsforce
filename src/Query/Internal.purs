@@ -8,41 +8,44 @@ import Data.Bifunctor (lmap)
 import Data.Variant (SProxy(..), Variant, inj)
 import Effect.Aff.Class (class MonadAff)
 import Salesforce.Connection.Types (Connection)
-import Salesforce.Internal (class HasNetwork, affjaxNetwork, request)
+import Salesforce.Internal (class HasNetwork, class HasNetworkType, request)
 import Salesforce.Query.Types (QueryEndpoint(..), QueryError, QueryResult, SOQL)
-import Salesforce.Types (NTProxy, NetworkError)
+import Salesforce.Types (NetworkError)
 import Salesforce.Util (EitherV)
 import Type.Row (type (+))
 
-query :: forall sobject r m. 
+query :: forall sobject r m nt.  
     MonadReader Connection m 
     => MonadAff m
+    => HasNetwork m (QueryEndpoint sobject) nt 
+    => HasNetworkType m nt
     => DecodeJson sobject 
     => SOQL sobject 
     -> m (EitherV (QueryError + r) (QueryResult sobject))
 query soql = do 
-    queryRequest affjaxNetwork $ Query soql
+    queryRequest $ Query soql
 
-queryExplain :: forall sobject r m. 
+queryExplain :: forall sobject r m nt. 
     MonadReader Connection m 
     => MonadAff m
+    => HasNetwork m (QueryEndpoint sobject) nt 
+    => HasNetworkType m nt
     => DecodeJson sobject 
     => SOQL sobject 
     -> m (EitherV (QueryError + r) (QueryResult sobject))
 queryExplain soql = do 
-    queryRequest affjaxNetwork $ QueryExplain soql
+    queryRequest $ QueryExplain soql
 
 queryRequest :: forall m sobject nt r.
-    Applicative m 
-    => DecodeJson sobject
+    DecodeJson sobject
     => HasNetwork m (QueryEndpoint sobject) nt 
+    => HasNetworkType m nt
     => MonadReader Connection m
     => MonadAff m
-    => NTProxy nt 
-    -> QueryEndpoint sobject  
+    => QueryEndpoint sobject  
     -> m (EitherV (QueryError + r) (QueryResult sobject))
-queryRequest nt q = do 
-    json <- lmap queryError <$> request nt q
+queryRequest q = do 
+    json <- lmap queryError <$> request q
     pure $ json >>= (lmap queryParseError <<< decodeJson)
 
 queryError :: forall r. NetworkError -> Variant (queryError :: NetworkError | r) 
