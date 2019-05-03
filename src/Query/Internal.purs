@@ -36,6 +36,17 @@ queryExplain :: forall sobject r m nt.
 queryExplain soql = do 
     queryRequest $ QueryExplain soql
 
+queryNext :: forall sobject r m nt. 
+    MonadReader Connection m 
+    => MonadAff m
+    => HasNetwork m (QueryEndpoint sobject) nt 
+    => HasNetworkType m nt
+    => DecodeJson sobject 
+    => String
+    -> m (EitherV (QueryError + r) (QueryResult sobject))
+queryNext next = do 
+    queryRequest $ QueryNext next
+
 queryRequest :: forall m sobject nt r.
     DecodeJson sobject
     => HasNetwork m (QueryEndpoint sobject) nt 

@@ -8,7 +8,6 @@ import Affjax.RequestHeader (RequestHeader(..))
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Except (ExceptT(..), except)
 import Control.Monad.Reader (class MonadReader, ask)
 import Control.Plus (empty)
 import Data.Argonaut.Core (Json)

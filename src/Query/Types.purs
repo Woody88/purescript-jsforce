@@ -4,7 +4,6 @@ import Prelude
 
 import Data.Argonaut.Decode (class DecodeJson, decodeJson, getField)
 import Data.Argonaut.Decode.Class (decodeJArray)
-import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
 import Data.Generic.Rep (class Generic)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
@@ -12,7 +11,7 @@ import Salesforce.Types (NetworkError)
 
 newtype SOQL r = SOQL String  
 
-data QueryEndpoint r = Query (SOQL r) | QueryExplain (SOQL r)
+data QueryEndpoint r = Query (SOQL r) | QueryExplain (SOQL r) | QueryNext String 
 
 type QueryError r = ( queryError      :: NetworkError
                     , queryParseError :: String 
