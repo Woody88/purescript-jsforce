@@ -19,7 +19,7 @@ import Data.String (Pattern(..), Replacement(..))
 import Data.String as String
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Salesforce.Connection.Types (Connection)
-import Salesforce.Connection.Util (baseUrl, authorizationHeader)
+import Salesforce.Connection.Util (authorizationHeader, baseUrl, orgDomain)
 import Salesforce.Query.Types (QueryEndpoint(..), SOQL(..))
 import Salesforce.Types (Affjax, NTProxy(..), NetworkError, kind NetworkType)
 import Salesforce.Util (Url)
@@ -39,7 +39,7 @@ instance hasQueryEndpoint :: HasEndpoint (QueryEndpoint r) where
         case queryEndpoint of 
             Query (SOQL soql)        -> baseUrl conn <> "/query/?q=" <> formatSoqlToUrlParams soql 
             QueryExplain (SOQL soql) -> baseUrl conn <> "/query/?explain=" <> formatSoqlToUrlParams soql 
-
+            QueryNext nextRecordsUrl -> orgDomain conn <> nextRecordsUrl
 
 -- | HasNetwork typclass which represent the request to salesforce
 class HasNetwork m sfapi (n :: NetworkType) where 
