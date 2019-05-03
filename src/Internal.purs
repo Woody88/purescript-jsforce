@@ -21,8 +21,10 @@ import Effect.Aff.Class (class MonadAff, liftAff)
 import Salesforce.Connection.Types (Connection)
 import Salesforce.Connection.Util (baseUrl, authorizationHeader)
 import Salesforce.Query.Types (QueryEndpoint(..), SOQL(..))
+import Salesforce.SObject.Types (SObjectEndpoint)
 import Salesforce.Types (Affjax, NTProxy(..), NetworkError, kind NetworkType)
 import Salesforce.Util (Url)
+import Unsafe.Coerce (unsafeCoerce)
 
 affjaxNetwork :: NTProxy Affjax 
 affjaxNetwork = NTProxy  
@@ -39,7 +41,10 @@ instance hasQueryEndpoint :: HasEndpoint (QueryEndpoint r) where
         case queryEndpoint of 
             Query (SOQL soql)        -> baseUrl conn <> "/query/?q=" <> formatSoqlToUrlParams soql 
             QueryExplain (SOQL soql) -> baseUrl conn <> "/query/?explain=" <> formatSoqlToUrlParams soql 
+            
 
+instance hasSObjectEndpoint :: HasEndpoint (SObjectEndpoint r) where 
+    endpointUrl conn sobjectEndpoint = unsafeCoerce "?"
 
 -- | HasNetwork typclass which represent the request to salesforce
 class HasNetwork m sfapi (n :: NetworkType) where 
