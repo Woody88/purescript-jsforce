@@ -41,6 +41,7 @@ spec =
         it "returns a Query Error on bad SOQL query" do 
             let queryErr = default (fail "Did not get correct error output")
                             # on _queryError (\qe -> qe.message `shouldEqual` "Bad Query")
+                            
             result <- runTest queryBadAccount fakeConnection 
             either queryErr (\_ -> fail "Should not get a query result") result
 

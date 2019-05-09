@@ -14,6 +14,7 @@ import Salesforce.Types (NetworkError)
 import Salesforce.Util (EitherV)
 import Type.Row (type (+))
 
+
 query :: forall sobject r m nt.  
     MonadReader Connection m 
     => MonadAff m
